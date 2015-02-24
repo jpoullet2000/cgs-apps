@@ -8,7 +8,7 @@ This package provides apps that are plugins for the UI [Hue](http://gethue.com/)
 A description of the apps available in Hue are described below.
 
 ## Installation
-To install a new app, download the zip file, decompress it and run from the decompressed directory `python installCGSapps.py <appname1> <appname2>`.
+To install a new app, download the zip file, decompress it and run from the decompressed directory `sudo python installCGSapps.py <appname1> <appname2>`.
 
 ## Apps
 
