@@ -6,6 +6,7 @@ import os, shutil, sys, distutils.core, subprocess
 # Some configuration needed for this file
 apps_directory = ""
 apps = {"GEMAN": "apps/GEMAN-GeneticManagementAndAnalysis"}
+PRODUCTION = False
 
 # TODO: better management of errors
 # Some basic checks
@@ -59,7 +60,11 @@ for i in xrange(1, len(sys.argv)):
     # We try to delete the eventual old folder
     app_directory = apps_directory+"/"+app_name
     if os.path.exists(app_directory):
-        reinstall = raw_input("It seems the '"+app_name+"' already exists. Do you want to reinstall it [Y/n]?")
+        if PRODUCTION == True:
+            reinstall = raw_input("It seems the '"+app_name+"' already exists. Do you want to reinstall it [Y/n]?")
+        else:
+            reinstall = "Y"
+            
         if reinstall != "Y" and reinstall != "y":
             print("Installation of '"+app_name+"' aborted.")
             aborted += 1
