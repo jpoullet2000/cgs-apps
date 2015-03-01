@@ -28,22 +28,29 @@ from impala.models import Dashboard, Controller
 """ ************** """
 
 def index(request):
+    """ Display the first page of the application """
     return render('index.mako', request, locals())
 
 def job(request):
+    """ Display the list of jobs submitted by the user """
     return render('job.mako', request, locals())
 
 @csrf_exempt
 def query(request):
+    """ Display the page which allows to launch queries or add data """
     if request.method == 'POST':
         form = query_form(request.POST)
     else:
         form = query_form()
     return render('query.mako', request, locals())
 
+def query_insert_one(request):
+    """ Insert the data of one sample in the database """
+    return render('query_insert_one.mako', request, locals())
+
 @csrf_exempt
 def query_insert(request):
-
+    """ Insert multiple samples in the database """
 
     # We list the different file in the current directory
     info = get_cron_information("http://localhost:14000/webhdfs/v1/user/hdfs/data/?op=LISTSTATUS")
@@ -55,18 +62,20 @@ def query_insert(request):
   
     return render('query_insert.mako', request, locals())
   
-def init(request):  
-    #connexion to the db
+def init(request):
+    """ Install the tables for this application """
+
+    # Connexion to the db
     query_server = get_query_server_config(name='impala')
     db = dbms.get(request.user, query_server=query_server)
   
-    #The sql queries
+    # The sql queries
     sql = '''DROP TABLE IF EXISTS map_sample_id; CREATE TABLE map_sample_id (internal_sample_id STRING, customer_sample_id STRING, date_creation TIMESTAMP, date_modification TIMESTAMP);  DROP TABLE IF EXISTS sample_files; CREATE TABLE sample_files (id STRING, internal_sample_id STRING, file_path STRING, file_type STRING, date_creation TIMESTAMP, date_modification TIMESTAMP);'''
     #DROP TABLE IF EXISTS variants; CREATE TABLE variants (id STRING, alternate_bases STRING, calls STRING, names STRING, info STRING, reference_bases STRING, quality DOUBLE, created TIMESTAMP, elem_start BIGINT, elem_end BIGINT, variantset_id STRING); DROP TABLE IF EXISTS variantsets;
     #CREATE TABLE variantsets (id STRING, dataset_id STRING, metadata STRING, reference_bounds STRING);
     #DROP TABLE IF EXISTS datasets; CREATE TABLE datasets (id STRING, is_public BOOLEAN, name STRING);'''
   
-    #Executing the different queries
+    # Executing the different queries
     tmp = sql.split(';')
     for hql in tmp:
         hql = hql.strip()
@@ -77,28 +86,30 @@ def init(request):
         return render('init.mako', request, locals())
   
 def init_example(request):
+    """ Allow to make some test for the developpers, to see if the insertion and the querying of data is correct """
+
     result = {'status': -1,'data': {}}
 
     query_server = get_query_server_config(name='impala')
     db = dbms.get(request.user, query_server=query_server)
   
-    #Deleting the db
+    # Deleting the db
     hql = "DROP TABLE IF EXISTS val_test_2;"
     query = hql_query(hql)
     handle = db.execute_and_wait(query, timeout_sec=5.0)
   
-    #Creating the db
+    # Creating the db
     hql = "CREATE TABLE val_test_2 (id int, token string);"
     query = hql_query(hql)
     handle = db.execute_and_wait(query, timeout_sec=5.0)
   
-    #Adding some data
+    # Adding some data
     hql = " INSERT OVERWRITE val_test_2 values (1, 'a'), (2, 'b'), (-1,'xyzzy');"
-    #hql = "INSERT INTO TABLE testset_bis VALUES (2, 25.0)"
+    # hql = "INSERT INTO TABLE testset_bis VALUES (2, 25.0)"
     query = hql_query(hql)
     handle = db.execute_and_wait(query, timeout_sec=5.0)
   
-    #querying the data
+    # querying the data
     hql = "SELECT * FROM val_test_2"
     query = hql_query(hql)
     handle = db.execute_and_wait(query, timeout_sec=5.0)
@@ -110,9 +121,11 @@ def init_example(request):
     return render('init.mako', request, locals())
   
 def history(request):
+    """ List the historic of the current user """
     return render('history.mako', request, locals())
   
 def documentation(request):
+    """ Display the main page of the user documentation """
     return render('documentation.mako', request, locals())
 
 """ ********************** """
@@ -120,6 +133,8 @@ def documentation(request):
 """ ********************** """
 
 def api_get_variants(request, variant_id):
+    """ Return the variant related to the given id """
+
     result = {'status': -1,'data': {}}
   
     #Connexion db
@@ -140,12 +155,16 @@ def api_get_variants(request, variant_id):
     return HttpResponse(json.dumps(result), mimetype="application/json")
   
 def api_search_variants(request):
+    """ Return the variant found regarding the post information received """
+
     result = {'status': -1,'data': {}}
   
     # Returning the data
     return HttpResponse(json.dumps(result), mimetype="application/json")
   
 def api_import_variants(request):
+    """ Import variant from the post/get/files information received """
+
     result = {'status': -1,'data': {}}
   
     #Returning the data
@@ -154,6 +173,8 @@ def api_import_variants(request):
   
 @csrf_exempt
 def api_search_sample_id(request):
+    """ Search the data related to a given sample id """
+
     result = {'status': -1,'data': {}}
   
     if request.method != 'POST' or not request.POST or not request.POST['sample_id']:
@@ -162,12 +183,12 @@ def api_search_sample_id(request):
   
     sample_id = str(request.POST['sample_id'])
    
-    #Connexion db
+    # Database connexion
     query_server = get_query_server_config(name='impala')
     db = dbms.get(request.user, query_server=query_server)
     customer_sample_id = str(request.user.id)+"_"+sample_id
     
-    #Selecting the files related to the sample id
+    # Selecting the files related to the sample id
     hql = "SELECT sample_files.id, sample_files.file_path FROM sample_files JOIN map_sample_id ON sample_files.internal_sample_id = map_sample_id.internal_sample_id WHERE map_sample_id.customer_sample_id = '"+customer_sample_id+"';"
     query = hql_query(hql)
     handle = db.execute_and_wait(query, timeout_sec=5.0)
@@ -177,11 +198,13 @@ def api_search_sample_id(request):
         result['data'] = list(data.rows())
         db.close(handle)
 
-    #Returning the data
+    # Returning the data
     return HttpResponse(json.dumps(result), mimetype="application/json")
   
 def api_insert_general(request):
-    #we list the different file in the current directory
+    """ Insert some data to the hdfs """
+
+    # we list the different file in the current directory
     info = get_cron_information("http://localhost:14000/webhdfs/v1/user/hdfs/data/?op=LISTSTATUS")
     files = json.loads(info)
     filesList = {}
@@ -191,7 +214,7 @@ def api_insert_general(request):
   
     final_result = {'status': -1,'data': 'Invalid data sent.'}
   
-    #We check if we have received some data to import
+    # We check if we have received some data to import
     formValidated = False
     if request.method == 'POST':
         form = query_insert_form(request.POST, files=filesList)
@@ -284,8 +307,10 @@ def api_insert_general(request):
 """ ************** """
   
 def get_cron_information(url, post_parameters=False):
+    """ Make a cron request and return the result """
+
     buff = StringIO()
-    #Adding some parameters to the url
+    # Adding some parameters to the url
     if "?" in url:
         url += "&user.name=cloudera"
     else:
@@ -305,6 +330,8 @@ def get_cron_information(url, post_parameters=False):
     return buff.getvalue()
 
 def upload_cron_information(url, filename):
+    """ Upload a file with cron to a specific url """
+
     fout = StringIO()
   
     #Adding some parameters to the url
@@ -329,6 +356,8 @@ def upload_cron_information(url, filename):
     return result
 
 def create_random_sample_id():
+    """ Create the id of a new sample """
+
     now = datetime.datetime.now()
     y = now.year
     m = now.month
@@ -349,6 +378,8 @@ def create_random_sample_id():
     return randomId
   
 def create_random_file_id():
+    """ Create a random file id """
+
     now = datetime.datetime.now()
     y = now.year
     m = now.month
@@ -362,10 +393,14 @@ def create_random_file_id():
     randomId += "_"+str(y)+str(m)+str(d)
     return randomId
   
-def copy_file(origine, destination):
+def copy_file(origin, destination):
+    """ Copy a file from a given origin to a given destination """
+
     return True
   
 def compress_file(path, destination):
+    """ Compress a file sequentially """
+
     data = ""
   
     #Open a temporary file on the local file system (not a big deal) for the compression. It will be deleted after
@@ -426,9 +461,11 @@ def compress_file(path, destination):
     return False
 
 def current_line():
+    """ Return the current line number """
     return inspect.currentframe().f_back.f_lineno
   
 def fprint(txt):
+    """ Print some text in a debug file """
     f = open('debug.txt', 'a')
     f.write("Line: "+str(current_line)+" in views.py: "+str(txt)+"\n")
     f.close()
