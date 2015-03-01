@@ -3,7 +3,7 @@
 from desktop.lib.django_util import render
 from django.views.decorators.csrf import csrf_exempt
 import datetime
-from genomicAPI.forms import *
+from GEMAN.forms import *
 import pycurl
 from StringIO import StringIO
 from random import randrange

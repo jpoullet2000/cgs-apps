@@ -1,10 +1,10 @@
 <%!from desktop.views import commonheader, commonfooter %>
 <%namespace name="shared" file="shared_components.mako" />
 
-${commonheader("Genomicapi", "genomicAPI", user) | n,unicode}
+${commonheader("GEMAN", "GEMAN", user) | n,unicode}
 ${shared.menubar(section='query')}
 
-<link rel="stylesheet" href="/genomicAPI/static/css/genomicAPI.css">
+<link rel="stylesheet" href="/GEMAN/static/css/GEMAN.css">
 
 ## Use double hashes for a mako template comment
 ## Main body
@@ -14,10 +14,10 @@ ${shared.menubar(section='query')}
     <h2 class="card-heading simple">Query your data</h2>
     <div class="card-body genomicAPI">
       <p class="info">
-        See the <a href="/genomicAPI/documentation/">documentation</a> to learn the small differences between 
+        See the <a href="/GEMAN/documentation/">documentation</a> to learn the small differences between
         the queries in SQL you are used to, and the ones you can make
         on Genomic API.<br/>
-        <a href="/genomicAPI/query_insert/">Insert/Upload data</a>
+        <a href="/GEMAN/query_insert/">Insert/Upload data</a>
       </p>
       
       <form action="" method="POST" class="queryForm">
@@ -49,5 +49,5 @@ ${shared.menubar(section='query')}
     </div>
   </div>
 </div>
-<link rel="stylesheet" href="/genomicAPI/static/js/genomicAPI.js">
+<link rel="stylesheet" href="/GEMAN/static/js/GEMAN.js">
 ${commonfooter(messages) | n,unicode}

@@ -2,7 +2,7 @@
 
 from django.conf.urls.defaults import patterns, url
 
-urlpatterns = patterns('genomicAPI',
+urlpatterns = patterns('GEMAN',
   url(r'^$', 'views.index'),
   
   url(r'^init/$', 'views.init'),

@@ -19,10 +19,10 @@ def is_selected(section, matcher):
                 Genomicapi
               </a>
              </li>
-             <li class="${is_selected(section, 'index')}"><a href="/genomicAPI/">Index</a></li>
-             <li class="${is_selected(section, 'query')}"><a href="/genomicAPI/query/">Query</a></li>
-             <li class="${is_selected(section, 'job')}"><a href="/genomicAPI/job/">Job</a></li>
-             <li class="${is_selected(section, 'history')}"><a href="/genomicAPI/history/">History</a></li>
+             <li class="${is_selected(section, 'index')}"><a href="/GEMAN/">Index</a></li>
+             <li class="${is_selected(section, 'query')}"><a href="/GEMAN/query/">Query</a></li>
+             <li class="${is_selected(section, 'job')}"><a href="/GEMAN/job/">Job</a></li>
+             <li class="${is_selected(section, 'history')}"><a href="/GEMAN/history/">History</a></li>
           </ul>
         </div>
       </div>

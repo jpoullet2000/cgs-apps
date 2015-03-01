@@ -28,7 +28,7 @@ $(document).ready(function() {
      //Sending the request
      $.ajax({
             type: 'POST',
-            url: '/genomicAPI/api/general/insert/?user.name=cloudera',
+            url: '/GEMAN/api/general/insert/?user.name=cloudera',
             data: params,        
             dataType: 'html',
             contentType: "application/json",    

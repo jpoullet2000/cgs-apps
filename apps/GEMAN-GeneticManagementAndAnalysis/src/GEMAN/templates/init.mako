@@ -1,7 +1,7 @@
 <%!from desktop.views import commonheader, commonfooter %>
 <%namespace name="shared" file="shared_components.mako" />
 
-${commonheader("Genomicapi", "genomicAPI", user) | n,unicode}
+${commonheader("GEMAN", "GEMAN", user) | n,unicode}
 ${shared.menubar(section='query')}
 
 ## Use double hashes for a mako template comment
