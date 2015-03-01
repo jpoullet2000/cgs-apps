@@ -5,7 +5,7 @@ import os, shutil, sys, distutils.core, subprocess
 
 # Some configuration needed for this file
 apps_directory = ""
-apps = {"calculator": "apps/calculator", "GEMAN": "apps/GEMAN-GeneticManagementAndAnalysis"}
+apps = {"GEMAN": "apps/GEMAN-GeneticManagementAndAnalysis"}
 
 # TODO: better management of errors
 # Some basic checks
