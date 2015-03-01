@@ -15,6 +15,15 @@ if not 'SUDO_UID' in os.environ.keys():
 if len(sys.argv) <= 1:
     sys.exit("Please, give the name of the app you want to install. Choose among the followings: " +
         str(apps.keys()))
+
+if sys.argv[0] != "installCGSapps.py" and "/" in sys.argv[0]:
+    # If the script was not launch in the current directory, we have to make some modifications
+    tmp = sys.argv[0].split("/")
+    script_name = tmp.pop()
+    app_directory_prefix = sys.argv[0].replace("/"+script_name,"/")
+else:
+    app_directory_prefix = ""
+
 # We take the folder where hue is installed
 try:
     hue_directory = subprocess.Popen("whereis hue", stdin=False, shell=True, stdout=subprocess.PIPE)
@@ -40,7 +49,7 @@ for i in xrange(1, len(sys.argv)):
     if not app_name in apps:
         sys.exit("Invalid app name. Choose among the followings: "+str(apps.keys()))
 
-    if not os.path.exists(apps[app_name]):
+    if not os.path.exists(app_directory_prefix+apps[app_name]):
         sys.exit("It seems the source of the app '"+app_name+"' is missing from the uncompressed zip.")
 
     # We try to delete the eventual old folder
@@ -75,7 +84,7 @@ for i in xrange(1, len(sys.argv)):
         sys.exit("Error while creating the app...")
 
     # We copy the content of the application to the new directory
-    app_src = apps[app_name]
+    app_src = app_directory_prefix+apps[app_name]
     try:
         print("Copying source code to app folder...")
         distutils.dir_util.copy_tree(app_src, app_directory)
