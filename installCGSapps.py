@@ -31,6 +31,9 @@ try:
 except:
     hue_directory = "/usr/lib/hue"
 
+if not os.path.exists(hue_directory) and "HUE_DIRECTORY" in os.environ:
+    hue_directory = os.environ["HUE_DIRECTORY"]
+
 if os.path.exists(hue_directory) and not os.path.exists(hue_directory+"/myapps"):
     try:
         os.makedirs(hue_directory+"/myapps")
@@ -40,8 +43,8 @@ if os.path.exists(hue_directory) and not os.path.exists(hue_directory+"/myapps")
 apps_directory = hue_directory + "/myapps"
 # Some basic checks first
 if not os.path.exists(hue_directory):
-    sys.exit("This installation file did not find the hue apps directory, please edit the variable 'hue_directory'"
-             " in this installCGSapps.py file.")
+    sys.exit("This installation file did not find the hue directory, please create a HUE_DIRECTORY environment"
+             "variable.")
 
 # We install each application
 for i in xrange(1, len(sys.argv)):
