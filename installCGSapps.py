@@ -64,7 +64,7 @@ for i in xrange(1, len(sys.argv)):
             reinstall = raw_input("It seems the '"+app_name+"' already exists. Do you want to reinstall it [Y/n]?")
         else:
             reinstall = "Y"
-            
+
         if reinstall != "Y" and reinstall != "y":
             print("Installation of '"+app_name+"' aborted.")
             aborted += 1
