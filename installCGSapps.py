@@ -47,6 +47,7 @@ if not os.path.exists(hue_directory):
              "variable.")
 
 # We install each application
+aborted = 0
 for i in xrange(1, len(sys.argv)):
     app_name = sys.argv[i]
     if not app_name in apps:
@@ -61,6 +62,7 @@ for i in xrange(1, len(sys.argv)):
         reinstall = raw_input("It seems the '"+app_name+"' already exists. Do you want to reinstall it [Y/n]?")
         if reinstall != "Y" and reinstall != "y":
             print("Installation of '"+app_name+"' aborted.")
+            aborted += 1
             continue
         else:
             try:
@@ -95,4 +97,7 @@ for i in xrange(1, len(sys.argv)):
         sys.exit("Impossible to copy data from '"+app_src+"' to '"+app_directory+"'.")
 
 # The happy end
-print("Installation successful.")
+if aborted == 0:
+    print("Installation successful.")
+elif aborted != len(sys.argv) - 1:
+    print("Installation of the 'non-aborted' apps successful.")
