@@ -5,7 +5,7 @@ import os, shutil, sys, distutils.core, subprocess
 
 # Some configuration needed for this file
 apps_directory = ""
-apps = {"calculator": "apps/calculator"}
+apps = {"calculator": "apps/calculator", "GEMAN": "apps/GEMAN-GeneticManagementAndAnalysis"}
 
 # TODO: better management of errors
 # Some basic checks
@@ -81,8 +81,8 @@ for i in xrange(1, len(sys.argv)):
         app_install.communicate()
 
         app_install = subprocess.Popen("cd " + apps_directory + " && python " + hue_directory +
-                                       "/tools/app_reg/app_reg.py --install " + app_name +
-                                       " && service hue restart", stdin=False, shell=True, stdout=subprocess.PIPE)
+                                       "/tools/app_reg/app_reg.py --install " + app_name,
+                                       stdin=False, shell=True, stdout=subprocess.PIPE)
         app_install.communicate()
     except Exception as e:
         print(e.message)
@@ -95,6 +95,14 @@ for i in xrange(1, len(sys.argv)):
         distutils.dir_util.copy_tree(app_src, app_directory)
     except:
         sys.exit("Impossible to copy data from '"+app_src+"' to '"+app_directory+"'.")
+
+# We restart hue
+try:
+    app_install = subprocess.Popen("service hue restart", stdin=False, shell=True, stdout=subprocess.PIPE)
+    app_install.communicate()
+except Exception as e:
+    print(e.message)
+    sys.exit("Error while restarting hue.")
 
 # The happy end
 if aborted == 0:
