@@ -9,7 +9,7 @@ apps = {"calculator": "apps/calculator"}
 
 # TODO: better management of errors
 # Some basic checks
-if not 'SUDO_UID' in os.environ.keys():
+if os.getuid() != 0:
     sys.exit("This program requires super user privileges.")
 
 if len(sys.argv) <= 1:
