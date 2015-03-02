@@ -19,12 +19,21 @@ ${shared.menubar(section='query')}
             <div class="insert-samples">
                 <form action="" method="POST" name="insert-form" id="insert-form">
 
-                    ## We display the title of each information we have to give
+                    <!-- If we already got the form, we display the result-->
+                    % if result:
+                        % if result['status'] != 1:
+                            <strong><font color="red">${result['error']}</font></strong>
+                        % else:
+                            <strong><font color="green">Data correctly added</font></strong>
+                        % endif
+                    % endif
+                    <br/><br/>
+                    <!-- We display the title of each information we have to give-->
                     <div class="left-box">
                         % for field in q:
                             % if field == "main_title":
                                 <div class="cell">
-                                    <strong>${info}</strong>
+                                    <strong>${questions["sample_registration"][field]}</strong>
                                 </div>
                             % else:
                                 <div class="cell">
@@ -46,7 +55,7 @@ ${shared.menubar(section='query')}
                             % else:
                                 % if questions["sample_registration"][field]["field"] == "text":
                                     <div class="cell">
-                                        <input type="text" value="" name="%{field}" id="%{field}" maxlength="100"/>
+                                        <input type="text" value="" name="${field}" id="${field}" maxlength="100"/>
                                     </div>
                                 % elif questions["sample_registration"][field]["field"] == "select":
                                     <div class="cell">

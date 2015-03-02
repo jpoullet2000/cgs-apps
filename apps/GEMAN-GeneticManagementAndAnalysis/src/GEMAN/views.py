@@ -22,6 +22,10 @@ from beeswax.design import hql_query
 from beeswax.server import dbms
 from beeswax.server.dbms import get_query_server_config
 from impala.models import Dashboard, Controller
+import copy
+from hadoop.fs.hadoopfs import Hdfs
+from django.template.defaultfilters import stringformat, filesizeformat
+from filebrowser.lib.rwx import filetype, rwx
 
 """ ************** """
 """ USER INTERFACE """
@@ -50,36 +54,14 @@ def query(request):
 def query_insert_samples(request):
     """ Insert the data of one or multiple sample in the database """
 
-    # We create the list of questions the user has to answer
-    questions = {
-        "sample_registration":{
-            "main_title": "Sample registration",
-            "original_sample_id": {"question": "Original sample id (for derived samples)", "field": "text", "regex": "a-zA-Z0-9_-", "mandatory": True},
-            "patient_id": {"question": "Patient id", "field": "text", "regex": "a-zA-Z0-9_-", "mandatory": True},
-            "biobank_id": {"question": "Biobank id", "field": "text", "regex": "a-zA-Z0-9_-"},
-            "prenatal_id": {"question": "Prenatal id", "field": "text", "regex": "a-zA-Z0-9_-"},
-            "sample_collection_date": {"question": "Date of sample collection", "field": "date", "regex": "date"},
-            "collection_status": {"question": "Collection status", "field": "select", "fields":{0:"collected",1:"not collected"}},
-            "sample_type": {"question": "Type of sample", "field": "select", "fields":{0:"serum",1:"something else"}},
-            "biological_contamination": {"question": "Any biological contamination", "field": "select", "fields":{0:"no",1:"yes"}},
-            "sample_storage_condition": {"question": "Sample storage condition", "field": "select", "fields":{0:"0C",1:"1C",2:"2C",3:"3C",4:"4C"}},
-        },
-    }
+    if request.method == 'POST':
+        result = api_insert_samples(request)
+        result = json_to_dict(result)
+        fprint(str(result))
 
-    # As a dict in python is not ordered, we use an intermediary list
-    q = ("main_title", "original_sample_id", "patient_id", "biobank_id", "prenatal_id", "sample_collection_date", "collection_status", "sample_type",
-        "biological_contamination", "sample_storage_condition")
-
-    # We list the previously uploaded files (the user can also upload a new file if wanted)
-    info = get_cron_information("http://localhost:14000/webhdfs/v1/user/hdfs/data/?op=LISTSTATUS")
-    files = {}
-    try:
-        files_json = json.loads(info)
-        for f in files_json[u"FileStatuses"][u"FileStatus"]:
-            if f[u"pathSuffix"].endswith(".vcf") or f[u"pathSuffix"].endswith(".bam") or f[u"pathSuffix"].endswith(".fastq") or f[u"pathSuffix"].endswith(".fq"):
-                files[f[u"pathSuffix"]] = "data/"+f[u"pathSuffix"]
-    except Exception:
-        pass
+    # We take the list of questions the user has to answer, and as dict in python is not ordered, we use an intermediary list
+    # We also receive the different files previously uploaded by the user
+    questions, q, files = data_insert_samples(request)
 
     # We display the form
     return render('query_insert_samples.mako', request, locals())
@@ -106,20 +88,24 @@ def init(request):
     db = dbms.get(request.user, query_server=query_server)
   
     # The sql queries
-    sql = '''DROP TABLE IF EXISTS map_sample_id; CREATE TABLE map_sample_id (internal_sample_id STRING, customer_sample_id STRING, date_creation TIMESTAMP, date_modification TIMESTAMP);  DROP TABLE IF EXISTS sample_files; CREATE TABLE sample_files (id STRING, internal_sample_id STRING, file_path STRING, file_type STRING, date_creation TIMESTAMP, date_modification TIMESTAMP);'''
+    sql = "DROP TABLE IF EXISTS map_sample_id; CREATE TABLE map_sample_id (internal_sample_id STRING, customer_sample_id STRING, date_creation TIMESTAMP, date_modification TIMESTAMP);  DROP TABLE IF EXISTS sample_files; CREATE TABLE sample_files (id STRING, internal_sample_id STRING, file_path STRING, file_type STRING, date_creation TIMESTAMP, date_modification TIMESTAMP);"
+
+    # The clinical db
+    sql += "DROP TABLE IF EXISTS clinical_sample; CREATE TABLE clinical_sample (sample_id STRING, patient_id STRING, date_of_collection STRING, original_sample_id STRING, status STRING, sample_type STRING, biological_contamination STRING, storage_condition STRING, biobank_id STRING, pn_id STRING);"
+
     #DROP TABLE IF EXISTS variants; CREATE TABLE variants (id STRING, alternate_bases STRING, calls STRING, names STRING, info STRING, reference_bases STRING, quality DOUBLE, created TIMESTAMP, elem_start BIGINT, elem_end BIGINT, variantset_id STRING); DROP TABLE IF EXISTS variantsets;
     #CREATE TABLE variantsets (id STRING, dataset_id STRING, metadata STRING, reference_bounds STRING);
     #DROP TABLE IF EXISTS datasets; CREATE TABLE datasets (id STRING, is_public BOOLEAN, name STRING);'''
   
     # Executing the different queries
-    tmp = sql.split(';')
+    tmp = sql.split(";")
     for hql in tmp:
         hql = hql.strip()
         if hql:
             query = hql_query(hql)
             handle = db.execute_and_wait(query, timeout_sec=5.0)
      
-        return render('init.mako', request, locals())
+    return render('init.mako', request, locals())
   
 def init_example(request):
     """ Allow to make some test for the developpers, to see if the insertion and the querying of data is correct """
@@ -167,6 +153,116 @@ def documentation(request):
 """ ********************** """
 """ ********* API ******** """
 """ ********************** """
+
+def api_insert_samples(request):
+    """ Insert sample data to database """
+
+    result = {'status': -1,'data': {}}
+
+    # Some checks first about the data
+    if request.method != 'POST' or not request.POST:
+        result['status'] = 0
+        result['error'] = 'You have to send a POST request'
+        return HttpResponse(json.dumps(result), mimetype="application/json")
+
+    questions, q, files = data_insert_samples(request)
+    post_fields = copy.deepcopy(request.POST)
+
+    for field in questions['sample_registration']:
+        info = questions['sample_registration'][field]
+
+        # Is each mantadory field there?
+        if field != 'main_title' and 'mandatory' in info:
+            if not field in post_fields:
+                result['status'] = 0
+                result['error'] = 'The field "'+field+'" is mandatory.'
+                return HttpResponse(json.dumps(result), mimetype="application/json")
+
+        # Is the data valid ?
+        if field in post_fields:
+            if info['field'] == 'text':
+                # TODO use regex
+                pass
+            elif info['field'] == 'select':
+                if not post_fields[field] in info['fields']:
+                    result['status'] = 0
+                    result['error'] = 'The value "'+str(post_fields[field])+'" given for the field "'+field+'" is invalid (Valid values: '+str(info['fields'])+').'
+                    return HttpResponse(json.dumps(result), mimetype="application/json")
+            elif info['field'] == 'date':
+                # TODO do verification with regex and stuff
+                pass
+        else:
+            post_fields[field] = ''
+
+    if not 'related_file' in post_fields:
+        result['status'] = 0
+        result['error'] = 'No indication of the related file given.'
+        return HttpResponse(json.dumps(result), mimetype="application/json")
+    elif not post_fields['related_file'] in files:
+        result['status'] = 0
+        result['error'] = 'Related file not found.'
+        return HttpResponse(json.dumps(result), mimetype="application/json")
+
+    # Now we make the insert
+    try:
+        #Connexion to the db
+        query_server = get_query_server_config(name='impala')
+        db = dbms.get(request.user, query_server=query_server)
+        dt = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    except Exception:
+        result['status'] = 0
+        result['error'] = 'Sorry, an error occured: Impossible to connect to the db.'
+        return HttpResponse(json.dumps(result), mimetype="application/json")
+
+    # The insert in the clinical_sample table
+    if not 'sample_id' in post_fields:
+        post_fields['sample_id'] = ''
+    sample_id = str(post_fields['sample_id'])
+
+    if not 'patient_id' in post_fields:
+        post_fields['patient_id'] = ''
+    patient_id = str(post_fields['patient_id'])
+
+    if not 'date_of_collection' in post_fields:
+        post_fields['date_of_collection'] = ''
+    date_of_collection = str(post_fields['date_of_collection'])
+
+    if not 'original_sample_id' in post_fields:
+        post_fields['original_sample_id'] = ''
+    original_sample_id = str(post_fields['original_sample_id'])
+
+    if not 'status' in post_fields:
+        post_fields['status'] = ''
+    status = str(post_fields['status'])
+
+    if not 'sample_type' in post_fields:
+        post_fields['sample_type'] = ''
+    sample_type = str(post_fields['sample_type'])
+
+    if not 'biological_contamination' in post_fields:
+        post_fields['biological_contamination'] = '0'
+    biological_contamination = str(post_fields['biological_contamination'])
+
+    if not 'storage_condition' in post_fields:
+        post_fields['storage_condition'] = ''
+    storage_condition = str(post_fields['storage_condition'])
+
+    if not 'biobank_id' in post_fields:
+        post_fields['biobank_id'] = ''
+    biobank_id = str(post_fields['biobank_id'])
+
+    if not 'pn_id' in post_fields:
+        post_fields['pn_id'] = ''
+    pn_id = str(post_fields['pn_id'])
+
+
+    query = hql_query("INSERT INTO clinical_sample VALUES('"+sample_id+"', '"+patient_id+"', '"+date_of_collection+"', '"+original_sample_id+"', '"+status+"', '"+sample_type+"', '"+biological_contamination+"','"+storage_condition+"', '"+biobank_id+"', '"+pn_id+"');")
+    handle = db.execute_and_wait(query, timeout_sec=5.0)
+    fprint("INSERT INTO clinical_sample VALUES('"+sample_id+"', '"+patient_id+"', '"+date_of_collection+"', '"+original_sample_id+"', '"+status+"', '"+sample_type+"', '"+biological_contamination+"','"+storage_condition+"', '"+biobank_id+"', '"+pn_id+"');")
+
+    result['status'] = 1
+    return HttpResponse(json.dumps(result), mimetype="application/json")
+
 
 def api_get_variants(request, variant_id):
     """ Return the variant related to the given id """
@@ -341,7 +437,42 @@ def api_insert_general(request):
 """ ************** """
 """ SOME FUNCTIONS """
 """ ************** """
-  
+
+def data_insert_samples(request):
+    """ Return the questions asked to insert the data """
+    questions = {
+        "sample_registration":{
+            "main_title": "Sample registration",
+            "original_sample_id": {"question": "Original sample id (for derived samples)", "field": "text", "regex": "a-zA-Z0-9_-", "mandatory": True},
+            "patient_id": {"question": "Patient id", "field": "text", "regex": "a-zA-Z0-9_-", "mandatory": True},
+            "biobank_id": {"question": "Biobank id", "field": "text", "regex": "a-zA-Z0-9_-"},
+            "prenatal_id": {"question": "Prenatal id", "field": "text", "regex": "a-zA-Z0-9_-"},
+            "sample_collection_date": {"question": "Date of sample collection", "field": "date", "regex": "date"},
+            "collection_status": {"question": "Collection status", "field": "select", "fields":{"0":"collected","1":"not collected"}},
+            "sample_type": {"question": "Type of sample", "field": "select", "fields":{"0":"serum","1":"something else"}},
+            "biological_contamination": {"question": "Any biological contamination", "field": "select", "fields":{"0":"no","1":"yes"}},
+            "sample_storage_condition": {"question": "Sample storage condition", "field": "select", "fields":{"0":"0C","1":"1C","2":"2C","3":"3C","4":"4C"}},
+        },
+    }
+
+    # A dict in python is not ordered so we need a list
+    q = ("main_title", "original_sample_id", "patient_id", "biobank_id", "prenatal_id", "sample_collection_date", "collection_status", "sample_type",
+        "biological_contamination", "sample_storage_condition")
+
+    # We also load the files
+    stats = request.fs.listdir_stats(directory_current_user(request))
+    data = [_massage_stats(request, stat) for stat in stats]
+    files = {}
+    for f in data:
+        files[f['name']] = f['name']
+
+    return questions, q, files
+
+def json_to_dict(text):
+    """ convert a string received from an api query to a classical dict """
+    text = str(text).replace('Content-Type: application/json', '').strip()
+    return json.loads(text)
+
 def get_cron_information(url, post_parameters=False):
     """ Make a cron request and return the result """
 
@@ -506,3 +637,34 @@ def fprint(txt):
     f.write("Line: "+str(current_line)+" in views.py: "+str(txt)+"\n")
     f.close()
     return True
+
+def directory_current_user(request):
+    """ Return the current user directory """
+    path = request.user.get_home_directory()
+    try:
+        if not request.fs.isdir(path):
+            path = '/'
+    except Exception:
+        pass
+
+    return path+"/user-data/"
+
+def _massage_stats(request, stats):
+    """
+    Massage a stats record as returned by the filesystem implementation
+    into the format that the views would like it in.
+    """
+    path = stats['path']
+    normalized = Hdfs.normpath(path)
+    return {
+    'path': normalized,
+    'name': stats['name'],
+    'stats': stats.to_json_dict(),
+    'mtime': datetime.datetime.fromtimestamp(stats['mtime']).strftime('%B %d, %Y %I:%M %p'),
+    'humansize': filesizeformat(stats['size']),
+    'type': filetype(stats['mode']),
+    'rwx': rwx(stats['mode'], stats['aclBit']),
+    'mode': stringformat(stats['mode'], "o")
+    #'url': make_absolute(request, "view", dict(path=urlquote(normalized))),
+    #'is_sentry_managed': request.fs.is_sentry_managed(path)
+    }
