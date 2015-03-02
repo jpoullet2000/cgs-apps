@@ -15,6 +15,7 @@ urlpatterns = patterns('GEMAN',
   
     url(r'^query/$', 'views.query'),
     url(r'^query_insert/$', 'views.query_insert'),
+    url(r'^query_insert_samples/$', 'views.query_insert_samples'),
     url(r'^job/$', 'views.job'),
     url(r'^history/$', 'views.history'),
   

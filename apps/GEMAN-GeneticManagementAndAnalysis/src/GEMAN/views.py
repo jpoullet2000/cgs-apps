@@ -3,7 +3,7 @@
 from desktop.lib.django_util import render
 from django.views.decorators.csrf import csrf_exempt
 import datetime
-from GEMAN.forms import *
+from forms import *
 import pycurl
 from StringIO import StringIO
 from random import randrange
@@ -29,24 +29,60 @@ from impala.models import Dashboard, Controller
 
 def index(request):
     """ Display the first page of the application """
+
     return render('index.mako', request, locals())
 
 def job(request):
     """ Display the list of jobs submitted by the user """
+
     return render('job.mako', request, locals())
 
 @csrf_exempt
 def query(request):
     """ Display the page which allows to launch queries or add data """
+
     if request.method == 'POST':
         form = query_form(request.POST)
     else:
         form = query_form()
     return render('query.mako', request, locals())
 
-def query_insert_one(request):
-    """ Insert the data of one sample in the database """
-    return render('query_insert_one.mako', request, locals())
+def query_insert_samples(request):
+    """ Insert the data of one or multiple sample in the database """
+
+    # We create the list of questions the user has to answer
+    questions = {
+        "sample_registration":{
+            "main_title": "Sample registration",
+            "original_sample_id": {"question": "Original sample id (for derived samples)", "field": "text", "regex": "a-zA-Z0-9_-", "mandatory": True},
+            "patient_id": {"question": "Patient id", "field": "text", "regex": "a-zA-Z0-9_-", "mandatory": True},
+            "biobank_id": {"question": "Biobank id", "field": "text", "regex": "a-zA-Z0-9_-"},
+            "prenatal_id": {"question": "Prenatal id", "field": "text", "regex": "a-zA-Z0-9_-"},
+            "sample_collection_date": {"question": "Date of sample collection", "field": "date", "regex": "date"},
+            "collection_status": {"question": "Collection status", "field": "select", "fields":{0:"collected",1:"not collected"}},
+            "sample_type": {"question": "Type of sample", "field": "select", "fields":{0:"serum",1:"something else"}},
+            "biological_contamination": {"question": "Any biological contamination", "field": "select", "fields":{0:"no",1:"yes"}},
+            "sample_storage_condition": {"question": "Sample storage condition", "field": "select", "fields":{0:"0C",1:"1C",2:"2C",3:"3C",4:"4C"}},
+        },
+    }
+
+    # As a dict in python is not ordered, we use an intermediary list
+    q = ("main_title", "original_sample_id", "patient_id", "biobank_id", "prenatal_id", "sample_collection_date", "collection_status", "sample_type",
+        "biological_contamination", "sample_storage_condition")
+
+    # We list the previously uploaded files (the user can also upload a new file if wanted)
+    info = get_cron_information("http://localhost:14000/webhdfs/v1/user/hdfs/data/?op=LISTSTATUS")
+    files = {}
+    try:
+        files_json = json.loads(info)
+        for f in files_json[u"FileStatuses"][u"FileStatus"]:
+            if f[u"pathSuffix"].endswith(".vcf") or f[u"pathSuffix"].endswith(".bam") or f[u"pathSuffix"].endswith(".fastq") or f[u"pathSuffix"].endswith(".fq"):
+                files[f[u"pathSuffix"]] = "data/"+f[u"pathSuffix"]
+    except Exception:
+        pass
+
+    # We display the form
+    return render('query_insert_samples.mako', request, locals())
 
 @csrf_exempt
 def query_insert(request):
