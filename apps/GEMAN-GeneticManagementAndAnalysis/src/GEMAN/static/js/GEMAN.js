@@ -1,4 +1,5 @@
 $(document).ready(function() {
+    //Not used anymore, but we let the code as it may be handful another time
   $("#insertForm").submit(function(e){
     e.preventDefault(e);
     
@@ -24,7 +25,7 @@ $(document).ready(function() {
       $("#result").removeClass("bad-info");
       $("#result").removeClass("great-info");
       $("#result").addClass("great-info");
-     
+
      //Sending the request
      $.ajax({
             type: 'POST',
