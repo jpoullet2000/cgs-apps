@@ -11,7 +11,7 @@ ${shared.menubar(section='index')}
   <div class="card">
     <h2 class="card-heading simple">Welcome on geman!</h2>
     <div class="card-body">
-      <p>Hello...</p>
+      <p>Hello!</p>
     </div>
   </div>
 </div>

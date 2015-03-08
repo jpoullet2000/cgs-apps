@@ -13,13 +13,6 @@ ${shared.menubar(section='query')}
   <div class="card">
     <h2 class="card-heading simple">Query your data</h2>
     <div class="card-body genomicAPI">
-      <p class="info">
-        See the <a href="/GEMAN/documentation/">documentation</a> to learn the small differences between
-        the queries in SQL you are used to, and the ones you can make
-        on Genomic API.<br/>
-        <a href="/GEMAN/sample/insert/interface/">Insert/Upload data</a>
-      </p>
-      
       <form action="" method="POST" class="queryForm">
         <br/>
         <div class="left-box">

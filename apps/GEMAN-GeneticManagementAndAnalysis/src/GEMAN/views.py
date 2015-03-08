@@ -37,14 +37,14 @@ def index(request):
     return render('index.mako', request, locals())
 
 @csrf_exempt
-def query(request):
+def query_index_interface(request):
     """ Display the page which allows to launch queries or add data """
 
     if request.method == 'POST':
         form = query_form(request.POST)
     else:
         form = query_form()
-    return render('query.mako', request, locals())
+    return render('query.index.interface.mako', request, locals())
 
 """ DISPLAY FILES PREVIOUSLY UPLOADED TO ADD SAMPLE DATA """
 
