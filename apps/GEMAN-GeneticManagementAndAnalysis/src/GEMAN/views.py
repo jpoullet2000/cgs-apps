@@ -36,11 +36,6 @@ def index(request):
 
     return render('index.mako', request, locals())
 
-def job(request):
-    """ Display the list of jobs submitted by the user """
-
-    return render('job.mako', request, locals())
-
 @csrf_exempt
 def query(request):
     """ Display the page which allows to launch queries or add data """
@@ -51,110 +46,34 @@ def query(request):
         form = query_form()
     return render('query.mako', request, locals())
 
-def query_insert_samples(request):
+""" DISPLAY FILES PREVIOUSLY UPLOADED TO ADD SAMPLE DATA """
+
+
+""" INSERT DATA FOR SAMPLE """
+def sample_insert_interface(request):
     """ Insert the data of one or multiple sample in the database """
 
-    if request.method == 'POST':
-        result = api_insert_samples(request)
-        result = json_to_dict(result)
-        fprint(str(result))
 
     # We take the list of questions the user has to answer, and as dict in python is not ordered, we use an intermediary list
     # We also receive the different files previously uploaded by the user
-    questions, q, files = data_insert_samples(request)
+    questions, q, files = sample_insert_questions(request)
+
+    if request.method == 'POST':
+        # We convert the string from handsontable into list easy to manipulate
+        # Example of initial information: Sample 1,123,,,564,08/16/1900,not collected,something else,,0C,Sample 2,Sample 3,,,,,08/20/1900
+
+        # TODO: the conversion
+
+        # Now we save the result
+        result = sample_insert(request)
+        result = json_to_dict(result)
+        fprint(str(result))
 
     # We display the form
-    return render('query_insert_samples.mako', request, locals())
+    return render('sample.insert.interface.mako', request, locals())
 
-@csrf_exempt
-def query_insert(request):
-    """ Insert multiple samples in the database """
 
-    # We list the different file in the current directory
-    info = get_cron_information("http://localhost:14000/webhdfs/v1/user/hdfs/data/?op=LISTSTATUS")
-    files = json.loads(info)
-    filesList = {}
-    for f in files[u"FileStatuses"][u"FileStatus"]:
-        if f[u"pathSuffix"].endswith(".vcf") or f[u"pathSuffix"].endswith(".bam") or f[u"pathSuffix"].endswith(".fastq") or f[u"pathSuffix"].endswith(".fq"):
-            filesList[f[u"pathSuffix"]] = "data/"+f[u"pathSuffix"]
-  
-    return render('query_insert.mako', request, locals())
-  
-def init(request):
-    """ Install the tables for this application """
-
-    # Connexion to the db
-    query_server = get_query_server_config(name='impala')
-    db = dbms.get(request.user, query_server=query_server)
-  
-    # The sql queries
-    sql = "DROP TABLE IF EXISTS map_sample_id; CREATE TABLE map_sample_id (internal_sample_id STRING, customer_sample_id STRING, date_creation TIMESTAMP, date_modification TIMESTAMP);  DROP TABLE IF EXISTS sample_files; CREATE TABLE sample_files (id STRING, internal_sample_id STRING, file_path STRING, file_type STRING, date_creation TIMESTAMP, date_modification TIMESTAMP);"
-
-    # The clinical db
-    sql += "DROP TABLE IF EXISTS clinical_sample; CREATE TABLE clinical_sample (sample_id STRING, patient_id STRING, date_of_collection STRING, original_sample_id STRING, status STRING, sample_type STRING, biological_contamination STRING, storage_condition STRING, biobank_id STRING, pn_id STRING);"
-
-    #DROP TABLE IF EXISTS variants; CREATE TABLE variants (id STRING, alternate_bases STRING, calls STRING, names STRING, info STRING, reference_bases STRING, quality DOUBLE, created TIMESTAMP, elem_start BIGINT, elem_end BIGINT, variantset_id STRING); DROP TABLE IF EXISTS variantsets;
-    #CREATE TABLE variantsets (id STRING, dataset_id STRING, metadata STRING, reference_bounds STRING);
-    #DROP TABLE IF EXISTS datasets; CREATE TABLE datasets (id STRING, is_public BOOLEAN, name STRING);'''
-  
-    # Executing the different queries
-    tmp = sql.split(";")
-    for hql in tmp:
-        hql = hql.strip()
-        if hql:
-            query = hql_query(hql)
-            handle = db.execute_and_wait(query, timeout_sec=5.0)
-     
-    return render('init.mako', request, locals())
-  
-def init_example(request):
-    """ Allow to make some test for the developpers, to see if the insertion and the querying of data is correct """
-
-    result = {'status': -1,'data': {}}
-
-    query_server = get_query_server_config(name='impala')
-    db = dbms.get(request.user, query_server=query_server)
-  
-    # Deleting the db
-    hql = "DROP TABLE IF EXISTS val_test_2;"
-    query = hql_query(hql)
-    handle = db.execute_and_wait(query, timeout_sec=5.0)
-  
-    # Creating the db
-    hql = "CREATE TABLE val_test_2 (id int, token string);"
-    query = hql_query(hql)
-    handle = db.execute_and_wait(query, timeout_sec=5.0)
-  
-    # Adding some data
-    hql = " INSERT OVERWRITE val_test_2 values (1, 'a'), (2, 'b'), (-1,'xyzzy');"
-    # hql = "INSERT INTO TABLE testset_bis VALUES (2, 25.0)"
-    query = hql_query(hql)
-    handle = db.execute_and_wait(query, timeout_sec=5.0)
-  
-    # querying the data
-    hql = "SELECT * FROM val_test_2"
-    query = hql_query(hql)
-    handle = db.execute_and_wait(query, timeout_sec=5.0)
-    if handle:
-        data = db.fetch(handle, rows=100)
-        result['data'] = list(data.rows())
-        db.close(handle)
- 
-    return render('init.mako', request, locals())
-  
-def history(request):
-    """ List the historic of the current user """
-    return render('history.mako', request, locals())
-  
-def documentation(request):
-    """ Display the main page of the user documentation """
-    return render('documentation.mako', request, locals())
-
-""" ********************** """
-""" ********* API ******** """
-""" ********************** """
-
-def api_insert_samples(request):
+def sample_insert(request):
     """ Insert sample data to database """
 
     result = {'status': -1,'data': {}}
@@ -165,7 +84,7 @@ def api_insert_samples(request):
         result['error'] = 'You have to send a POST request'
         return HttpResponse(json.dumps(result), mimetype="application/json")
 
-    questions, q, files = data_insert_samples(request)
+    questions, q, files = sample_insert_questions(request)
     post_fields = copy.deepcopy(request.POST)
 
     for field in questions['sample_registration']:
@@ -264,7 +183,105 @@ def api_insert_samples(request):
     return HttpResponse(json.dumps(result), mimetype="application/json")
 
 
-def api_get_variants(request, variant_id):
+def sample_insert_questions(request):
+    """ Return the questions asked to insert the data """
+    questions = {
+        "sample_registration":{
+            "main_title": "Sample registration",
+            "original_sample_id": {"question": "Original sample id (for derived samples)", "field": "text", "regex": "a-zA-Z0-9_-", "mandatory": True},
+            "patient_id": {"question": "Patient id", "field": "text", "regex": "a-zA-Z0-9_-", "mandatory": True},
+            "biobank_id": {"question": "Biobank id", "field": "text", "regex": "a-zA-Z0-9_-"},
+            "prenatal_id": {"question": "Prenatal id", "field": "text", "regex": "a-zA-Z0-9_-"},
+            "sample_collection_date": {"question": "Date of sample collection", "field": "date", "regex": "date"},
+            "collection_status": {"question": "Collection status", "field": "select", "fields":{"0":"collected","1":"not collected"}},
+            "sample_type": {"question": "Type of sample", "field": "select", "fields":{"0":"serum","1":"something else"}},
+            "biological_contamination": {"question": "Any biological contamination", "field": "select", "fields":{"0":"no","1":"yes"}},
+            "sample_storage_condition": {"question": "Sample storage condition", "field": "select", "fields":{"0":"0C","1":"1C","2":"2C","3":"3C","4":"4C"}},
+        },
+    }
+
+    # A dict in python is not ordered so we need a list
+    q = ("main_title", "original_sample_id", "patient_id", "biobank_id", "prenatal_id", "sample_collection_date", "collection_status", "sample_type",
+        "biological_contamination", "sample_storage_condition")
+
+    # We also load the files
+    stats = request.fs.listdir_stats(directory_current_user(request))
+    data = [_massage_stats(request, stat) for stat in stats]
+    files = {}
+    for f in data:
+        files[f['name']] = f['name']
+
+    return questions, q, files
+
+
+""" INITIALIZE THE DATABASE """
+def database_initialize(request):
+    """ Install the tables for this application """
+
+    # Connexion to the db
+    query_server = get_query_server_config(name='impala')
+    db = dbms.get(request.user, query_server=query_server)
+  
+    # The sql queries
+    sql = "DROP TABLE IF EXISTS map_sample_id; CREATE TABLE map_sample_id (internal_sample_id STRING, customer_sample_id STRING, date_creation TIMESTAMP, date_modification TIMESTAMP);  DROP TABLE IF EXISTS sample_files; CREATE TABLE sample_files (id STRING, internal_sample_id STRING, file_path STRING, file_type STRING, date_creation TIMESTAMP, date_modification TIMESTAMP);"
+
+    # The clinical db
+    sql += "DROP TABLE IF EXISTS clinical_sample; CREATE TABLE clinical_sample (sample_id STRING, patient_id STRING, date_of_collection STRING, original_sample_id STRING, status STRING, sample_type STRING, biological_contamination STRING, storage_condition STRING, biobank_id STRING, pn_id STRING);"
+
+    #DROP TABLE IF EXISTS variants; CREATE TABLE variants (id STRING, alternate_bases STRING, calls STRING, names STRING, info STRING, reference_bases STRING, quality DOUBLE, created TIMESTAMP, elem_start BIGINT, elem_end BIGINT, variantset_id STRING); DROP TABLE IF EXISTS variantsets;
+    #CREATE TABLE variantsets (id STRING, dataset_id STRING, metadata STRING, reference_bounds STRING);
+    #DROP TABLE IF EXISTS datasets; CREATE TABLE datasets (id STRING, is_public BOOLEAN, name STRING);'''
+  
+    # Executing the different queries
+    tmp = sql.split(";")
+    for hql in tmp:
+        hql = hql.strip()
+        if hql:
+            query = hql_query(hql)
+            handle = db.execute_and_wait(query, timeout_sec=5.0)
+     
+    return render('database.initialize.mako', request, locals())
+  
+def init_example(request):
+    """ Allow to make some test for the developpers, to see if the insertion and the querying of data is correct """
+
+    result = {'status': -1,'data': {}}
+
+    query_server = get_query_server_config(name='impala')
+    db = dbms.get(request.user, query_server=query_server)
+  
+    # Deleting the db
+    hql = "DROP TABLE IF EXISTS val_test_2;"
+    query = hql_query(hql)
+    handle = db.execute_and_wait(query, timeout_sec=5.0)
+  
+    # Creating the db
+    hql = "CREATE TABLE val_test_2 (id int, token string);"
+    query = hql_query(hql)
+    handle = db.execute_and_wait(query, timeout_sec=5.0)
+  
+    # Adding some data
+    hql = " INSERT OVERWRITE val_test_2 values (1, 'a'), (2, 'b'), (-1,'xyzzy');"
+    # hql = "INSERT INTO TABLE testset_bis VALUES (2, 25.0)"
+    query = hql_query(hql)
+    handle = db.execute_and_wait(query, timeout_sec=5.0)
+  
+    # querying the data
+    hql = "SELECT * FROM val_test_2"
+    query = hql_query(hql)
+    handle = db.execute_and_wait(query, timeout_sec=5.0)
+    if handle:
+        data = db.fetch(handle, rows=100)
+        result['data'] = list(data.rows())
+        db.close(handle)
+ 
+    return render('database.initialize.mako', request, locals())
+
+
+
+
+""" RETURN THE INFORMATION RELATED TO A VARIANT """
+def variant_get(request, variant_id):
     """ Return the variant related to the given id """
 
     result = {'status': -1,'data': {}}
@@ -285,41 +302,25 @@ def api_get_variants(request, variant_id):
 
     #Returning the data
     return HttpResponse(json.dumps(result), mimetype="application/json")
-  
-def api_search_variants(request):
-    """ Return the variant found regarding the post information received """
 
-    result = {'status': -1,'data': {}}
-  
-    # Returning the data
-    return HttpResponse(json.dumps(result), mimetype="application/json")
-  
-def api_import_variants(request):
-    """ Import variant from the post/get/files information received """
-
-    result = {'status': -1,'data': {}}
-  
-    #Returning the data
-    return HttpResponse(json.dumps(result), mimetype="application/json")
-  
-  
+""" RETURN THE DATA FOR A SAMPLE ID """
 @csrf_exempt
-def api_search_sample_id(request):
+def sample_search(request):
     """ Search the data related to a given sample id """
 
     result = {'status': -1,'data': {}}
-  
+
     if request.method != 'POST' or not request.POST or not request.POST['sample_id']:
         result['status'] = 0
         return HttpResponse(json.dumps(result), mimetype="application/json")
-  
+
     sample_id = str(request.POST['sample_id'])
-   
+
     # Database connexion
     query_server = get_query_server_config(name='impala')
     db = dbms.get(request.user, query_server=query_server)
     customer_sample_id = str(request.user.id)+"_"+sample_id
-    
+
     # Selecting the files related to the sample id
     hql = "SELECT sample_files.id, sample_files.file_path FROM sample_files JOIN map_sample_id ON sample_files.internal_sample_id = map_sample_id.internal_sample_id WHERE map_sample_id.customer_sample_id = '"+customer_sample_id+"';"
     query = hql_query(hql)
@@ -332,7 +333,30 @@ def api_search_sample_id(request):
 
     # Returning the data
     return HttpResponse(json.dumps(result), mimetype="application/json")
+
+""" METHODS TO IMPLEMENT """
+
+def documentation(request):
+    """ Display the main page of the user documentation """
+    return render('documentation.mako', request, locals())
+
+def variant_search(request):
+    """ Return the variant found regarding the post information received """
+
+    result = {'status': -1,'data': {}}
   
+    # Returning the data
+    return HttpResponse(json.dumps(result), mimetype="application/json")
+  
+def variant_import(request):
+    """ Import variant from the post/get/files information received """
+
+    result = {'status': -1,'data': {}}
+  
+    #Returning the data
+    return HttpResponse(json.dumps(result), mimetype="application/json")
+
+""" OBSOLETE METHOD """
 def api_insert_general(request):
     """ Insert some data to the hdfs """
 
@@ -433,40 +457,23 @@ def api_insert_general(request):
       
     #Returning the data
     return HttpResponse(json.dumps(final_result), mimetype="application/json")
-  
+
+
+
+
+
+
+
 """ ************** """
 """ SOME FUNCTIONS """
 """ ************** """
 
-def data_insert_samples(request):
-    """ Return the questions asked to insert the data """
-    questions = {
-        "sample_registration":{
-            "main_title": "Sample registration",
-            "original_sample_id": {"question": "Original sample id (for derived samples)", "field": "text", "regex": "a-zA-Z0-9_-", "mandatory": True},
-            "patient_id": {"question": "Patient id", "field": "text", "regex": "a-zA-Z0-9_-", "mandatory": True},
-            "biobank_id": {"question": "Biobank id", "field": "text", "regex": "a-zA-Z0-9_-"},
-            "prenatal_id": {"question": "Prenatal id", "field": "text", "regex": "a-zA-Z0-9_-"},
-            "sample_collection_date": {"question": "Date of sample collection", "field": "date", "regex": "date"},
-            "collection_status": {"question": "Collection status", "field": "select", "fields":{"0":"collected","1":"not collected"}},
-            "sample_type": {"question": "Type of sample", "field": "select", "fields":{"0":"serum","1":"something else"}},
-            "biological_contamination": {"question": "Any biological contamination", "field": "select", "fields":{"0":"no","1":"yes"}},
-            "sample_storage_condition": {"question": "Sample storage condition", "field": "select", "fields":{"0":"0C","1":"1C","2":"2C","3":"3C","4":"4C"}},
-        },
-    }
 
-    # A dict in python is not ordered so we need a list
-    q = ("main_title", "original_sample_id", "patient_id", "biobank_id", "prenatal_id", "sample_collection_date", "collection_status", "sample_type",
-        "biological_contamination", "sample_storage_condition")
 
-    # We also load the files
-    stats = request.fs.listdir_stats(directory_current_user(request))
-    data = [_massage_stats(request, stat) for stat in stats]
-    files = {}
-    for f in data:
-        files[f['name']] = f['name']
 
-    return questions, q, files
+
+
+
 
 def json_to_dict(text):
     """ convert a string received from an api query to a classical dict """

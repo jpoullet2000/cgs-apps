@@ -81,6 +81,7 @@ $(document).ready(function () {
 
 
     $("#handson-form").submit(function(e){
+        alert(hot.getData());
         $('#handson-data').val(hot.getData());
     });
 

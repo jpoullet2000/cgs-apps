@@ -17,7 +17,7 @@ ${shared.menubar(section='query')}
         See the <a href="/GEMAN/documentation/">documentation</a> to learn the small differences between
         the queries in SQL you are used to, and the ones you can make
         on Genomic API.<br/>
-        <a href="/GEMAN/query_insert_samples/">Insert/Upload data</a>
+        <a href="/GEMAN/sample/insert/interface/">Insert/Upload data</a>
       </p>
       
       <form action="" method="POST" class="queryForm">
