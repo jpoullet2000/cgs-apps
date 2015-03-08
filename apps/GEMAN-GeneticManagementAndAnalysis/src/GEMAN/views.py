@@ -95,15 +95,10 @@ def sample_insert_interface(request):
     questions, q, files = sample_insert_questions(request)
 
     if request.method == 'POST':
-        # We convert the string from handsontable into list easy to manipulate
-        # Example of initial information: Sample 1,123,,,564,08/16/1900,not collected,something else,,0C,Sample 2,Sample 3,,,,,08/20/1900
-
-        # TODO: the conversion
-
         # Now we save the result
+        fprint(str(request.POST))
         result = sample_insert(request)
         result = json_to_dict(result)
-        fprint(str(result))
 
     # We display the form
     return render('sample.insert.interface.mako', request, locals())
@@ -119,7 +114,7 @@ def sample_insert(request):
         filename = request.GET['vcf']
     else:
         result['status'] = 0
-        result['error'] = 'No vcf file was given.'
+        result['error'] = 'No vcf file was given. You have to give a GET parameter called "vcf" with the filename of your vcf in your hdfs directory.'
         return HttpResponse(json.dumps(result), mimetype="application/json")
 
     # We take the files in the current user directory
@@ -137,53 +132,47 @@ def sample_insert(request):
         result['error'] = 'The vcf file given was not found in the cgs file system.'
         return HttpResponse(json.dumps(result), mimetype="application/json")
 
+    # We take the number of samples (and their name) in the vcf file
+    samples = sample_insert_vcfinfo(request, filename, length)
+    samples_quantity = len(samples)
+    if samples_quantity == 0:
+        error_sample = True
+        return render('sample.insert.interface.mako', request, locals())
+
     # Some checks first about the sample data
-    if request.method != 'POST' or not request.POST:
+    if request.method != 'POST':
         result['status'] = 0
-        result['error'] = 'You have to send a POST request'
+        result['error'] = 'You have to send a POST request.'
+        return HttpResponse(json.dumps(result), mimetype="application/json")
+
+    if not 'vcf_data' in request.POST:
+        result['status'] = 0
+        result['error'] = 'The vcf data were not given. You have to send a POST field called "vcf_data" with the information about the related file given in parameter.'
+        return HttpResponse(json.dumps(result), mimetype="application/json")
+
+    raw_lines = request.POST['vcf_data'].split(";")
+    samples_quantity_received = len(raw_lines)
+    if samples_quantity_received == samples_quantity + 1 and not raw_lines[len(raw_lines)-1]:# We allow the final ';'
+        raw_lines.pop()
+        samples_quantity_received = samples_quantity
+
+    if samples_quantity !=  samples_quantity_received:
+        fprint(request.POST['vcf_data'])
+        result['status'] = 0
+        result['error'] = 'The number of samples sent do not correspond to the number of samples found in the vcf file ('+str(samples_quantity_received)+' vs '+str(samples_quantity)+').'
         return HttpResponse(json.dumps(result), mimetype="application/json")
 
     questions, q, files = sample_insert_questions(request)
-    post_fields = copy.deepcopy(request.POST)
 
-    for field in questions['sample_registration']:
-        info = questions['sample_registration'][field]
+    questions_quantity = len(q)
+    for raw_line in raw_lines:
+        if len(raw_line.split(",")) != questions_quantity:
+            result['status'] = 0
+            result['error'] = 'The number of information sent do not correspond to the number of questions asked for each sample ('+str(len(raw_line.split(",")))+' vs '+str(questions_quantity)+').'
+            return HttpResponse(json.dumps(result), mimetype="application/json")
 
-        # Is each mantadory field there?
-        if field != 'main_title' and 'mandatory' in info:
-            if not field in post_fields:
-                result['status'] = 0
-                result['error'] = 'The field "'+field+'" is mandatory.'
-                return HttpResponse(json.dumps(result), mimetype="application/json")
-
-        # Is the data valid ?
-        if field in post_fields:
-            if info['field'] == 'text':
-                # TODO use regex
-                pass
-            elif info['field'] == 'select':
-                if not post_fields[field] in info['fields']:
-                    result['status'] = 0
-                    result['error'] = 'The value "'+str(post_fields[field])+'" given for the field "'+field+'" is invalid (Valid values: '+str(info['fields'])+').'
-                    return HttpResponse(json.dumps(result), mimetype="application/json")
-            elif info['field'] == 'date':
-                # TODO do verification with regex and stuff
-                pass
-        else:
-            post_fields[field] = ''
-
-    if not 'related_file' in post_fields:
-        result['status'] = 0
-        result['error'] = 'No indication of the related file given.'
-        return HttpResponse(json.dumps(result), mimetype="application/json")
-    elif not post_fields['related_file'] in files:
-        result['status'] = 0
-        result['error'] = 'Related file not found.'
-        return HttpResponse(json.dumps(result), mimetype="application/json")
-
-    # Now we make the insert
+    # Connexion to the db
     try:
-        #Connexion to the db
         query_server = get_query_server_config(name='impala')
         db = dbms.get(request.user, query_server=query_server)
         dt = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
@@ -192,51 +181,77 @@ def sample_insert(request):
         result['error'] = 'Sorry, an error occured: Impossible to connect to the db.'
         return HttpResponse(json.dumps(result), mimetype="application/json")
 
-    # The insert in the clinical_sample table
-    if not 'sample_id' in post_fields:
-        post_fields['sample_id'] = ''
-    sample_id = str(post_fields['sample_id'])
+    # Now we analyze each sample information
+    for raw_line in raw_lines:
+        answers = raw_line.split(",")
 
-    if not 'patient_id' in post_fields:
-        post_fields['patient_id'] = ''
-    patient_id = str(post_fields['patient_id'])
+        # We check each answer for each question
+        current_sample = {}
+        for key, answer in enumerate(answers):
 
-    if not 'date_of_collection' in post_fields:
-        post_fields['date_of_collection'] = ''
-    date_of_collection = str(post_fields['date_of_collection'])
+            # We take the related field
+            field = q[key]
+            info = questions['sample_registration'][field]
+            fprint(str(info))
+            # We check if the information is correct
+            if not type(info) is dict:
+                pass # Nothing to do here, it's normal. We could compare the sample id received from the ones found in the file maybe.
+            elif info['field'] == 'select':
+                if not answer in info['fields'].values():
+                    result['status'] = 0
+                    result['error'] = 'The value "'+str(answer)+'" given for the field "'+field+'" is invalid (Valid values: '+str(info['fields'])+').'
+                    return HttpResponse(json.dumps(result), mimetype="application/json")
+            else:
+                # TODO: make the different verification of the 'text' and 'date' format
+                pass
 
-    if not 'original_sample_id' in post_fields:
-        post_fields['original_sample_id'] = ''
-    original_sample_id = str(post_fields['original_sample_id'])
+            current_sample[field] = answer
 
-    if not 'status' in post_fields:
-        post_fields['status'] = ''
-    status = str(post_fields['status'])
+        fprint(current_sample)
+        if not 'sample_id' in current_sample:
+            current_sample['sample_id'] = ''
+        sample_id = str(current_sample['sample_id'])
 
-    if not 'sample_type' in post_fields:
-        post_fields['sample_type'] = ''
-    sample_type = str(post_fields['sample_type'])
+        if not 'patient_id' in current_sample:
+            current_sample['patient_id'] = ''
+        patient_id = str(current_sample['patient_id'])
 
-    if not 'biological_contamination' in post_fields:
-        post_fields['biological_contamination'] = '0'
-    biological_contamination = str(post_fields['biological_contamination'])
+        if not 'sample_collection_date' in current_sample:
+            current_sample['sample_collection_date'] = ''
+        date_of_collection = str(current_sample['sample_collection_date'])
 
-    if not 'storage_condition' in post_fields:
-        post_fields['storage_condition'] = ''
-    storage_condition = str(post_fields['storage_condition'])
+        if not 'original_sample_id' in current_sample:
+            current_sample['original_sample_id'] = ''
+        original_sample_id = str(current_sample['original_sample_id'])
 
-    if not 'biobank_id' in post_fields:
-        post_fields['biobank_id'] = ''
-    biobank_id = str(post_fields['biobank_id'])
+        if not 'collection_status' in current_sample:
+            current_sample['collection_status'] = ''
+        status = str(current_sample['collection_status'])
 
-    if not 'pn_id' in post_fields:
-        post_fields['pn_id'] = ''
-    pn_id = str(post_fields['pn_id'])
+        if not 'sample_type' in current_sample:
+            current_sample['sample_type'] = ''
+        sample_type = str(current_sample['sample_type'])
 
+        if not 'biological_contamination' in current_sample:
+            current_sample['biological_contamination'] = '0'
+        biological_contamination = str(current_sample['biological_contamination'])
 
-    query = hql_query("INSERT INTO clinical_sample VALUES('"+sample_id+"', '"+patient_id+"', '"+date_of_collection+"', '"+original_sample_id+"', '"+status+"', '"+sample_type+"', '"+biological_contamination+"','"+storage_condition+"', '"+biobank_id+"', '"+pn_id+"');")
-    handle = db.execute_and_wait(query, timeout_sec=5.0)
-    fprint("INSERT INTO clinical_sample VALUES('"+sample_id+"', '"+patient_id+"', '"+date_of_collection+"', '"+original_sample_id+"', '"+status+"', '"+sample_type+"', '"+biological_contamination+"','"+storage_condition+"', '"+biobank_id+"', '"+pn_id+"');")
+        if not 'sample_storage_condition' in current_sample:
+            current_sample['sample_storage_condition'] = ''
+        storage_condition = str(current_sample['sample_storage_condition'])
+
+        if not 'biobank_id' in current_sample:
+            current_sample['biobank_id'] = ''
+        biobank_id = str(current_sample['biobank_id'])
+
+        if not 'pn_id' in current_sample:
+            current_sample['pn_id'] = ''
+        pn_id = str(current_sample['pn_id'])
+
+        # We insert the data
+        fprint("INSERT INTO clinical_sample VALUES('"+sample_id+"', '"+patient_id+"', '"+date_of_collection+"', '"+original_sample_id+"', '"+status+"', '"+sample_type+"', '"+biological_contamination+"','"+storage_condition+"', '"+biobank_id+"', '"+pn_id+"');")
+        query = hql_query("INSERT INTO clinical_sample VALUES('"+sample_id+"', '"+patient_id+"', '"+date_of_collection+"', '"+original_sample_id+"', '"+status+"', '"+sample_type+"', '"+biological_contamination+"','"+storage_condition+"', '"+biobank_id+"', '"+pn_id+"');")
+        handle = db.execute_and_wait(query, timeout_sec=5.0)
 
     result['status'] = 1
     return HttpResponse(json.dumps(result), mimetype="application/json")
@@ -246,7 +261,7 @@ def sample_insert_questions(request):
     """ Return the questions asked to insert the data """
     questions = {
         "sample_registration":{
-            "main_title": "Sample registration",
+            "main_title": "Sample",
             "original_sample_id": {"question": "Original sample id (for derived samples)", "field": "text", "regex": "a-zA-Z0-9_-", "mandatory": True},
             "patient_id": {"question": "Patient id", "field": "text", "regex": "a-zA-Z0-9_-", "mandatory": True},
             "biobank_id": {"question": "Biobank id", "field": "text", "regex": "a-zA-Z0-9_-"},
@@ -290,7 +305,8 @@ def sample_insert_vcfinfo(request, filename, total_length):
 
                 # We add the samples information
                 for i in xrange(9, len(info)):
-                    samples.append(info[i])
+                    if info[i]:
+                        samples.append(info[i])
 
                 # We can stop it here
                 break

@@ -41,18 +41,18 @@ $(document).ready(function () {
         columns: [
                 % for field in q:
                     % if field == "main_title":
-                        {},
+                        {strict: true,allowInvalid: false},
                     % else:
                         % if questions["sample_registration"][field]["field"] == "text":
-                            {},
+                            {strict: true},
                         % elif questions["sample_registration"][field]["field"] == "select":
                             {type: 'autocomplete', source: [
                                     % for subid in questions["sample_registration"][field]["fields"]:
                                         '${questions["sample_registration"][field]["fields"][subid]}',
                                     % endfor
-                               ], strict: false},
+                               ], strict: true, allowInvalid: false},
                         % elif questions["sample_registration"][field]["field"] == "date":
-                            {type: 'date', dateFormat: 'MM/DD/YYYY', correctFormat: true},
+                            {type: 'date', dateFormat: 'MM/DD/YYYY', correctFormat: true, strict: true,allowInvalid: false},
                         % endif
                     % endif
                 % endfor %
@@ -70,8 +70,24 @@ $(document).ready(function () {
 
 
     $("#handson-form").submit(function(e){
-        alert(hot.getData());
-        $('#handson-data').val(hot.getData());
+
+        //The simple getData remove empty cell, which is not very practical...
+        //Each line will be separated by a ';' and each cell by a ','
+        var completeData = "";
+        var currentCellData = "";
+        for(var x=0; x < hot.countRows(); x++) {
+            for(var y=0; y < hot.countCols(); y++) {
+                if(y > 0)
+                    completeData += ",";
+                currentCellData = hot.getDataAtCell(x, y)
+
+                if(currentCellData !== undefined)
+                    completeData += currentCellData;
+            }
+            completeData += ";"
+        }
+
+        $('#vcf_data').val(completeData);
     });
 
 
@@ -101,7 +117,6 @@ ${shared.menubar(section='query')}
                 % elif error_sample:
                     <strong><font color="red">We have found no sample information in the vcf. <br/>The file may be corrupted or the format not taken into account in the current version of the code.</font></strong>
                 % else:
-                    <div id="example" class="handsontable"></div>
 
                     <!-- If we already got the form, we display the result-->
                     % if result:
@@ -111,64 +126,10 @@ ${shared.menubar(section='query')}
                             <strong><font color="green">Data correctly added</font></strong>
                         % endif
                     % endif
-                    <br/><br/>
-                    <!-- We display the title of each information we have to give-->
-
-                    <!-- NOT USED ANYMORE (we just let the code in case we would need it)
-                    <div class="left-box">
-                        % for field in q:
-                            % if field == "main_title":
-                                <div class="cell">
-                                    <strong>${questions["sample_registration"][field]}</strong>
-                                </div>
-                            % else:
-                                <div class="cell">
-                                    <label for="${field}">
-                                        <em>${questions["sample_registration"][field]['question']}</em>
-                                    </label>
-                                </div>
-                            % endif
-                        % endfor %
-                        <div class="cell">
-                            <em>File related</em>
-                        </div>
-                    </div>
-                    <div class="right-boxes">
-                        <div class="right-box">
-                            % for field in q:
-                                % if field == "main_title":
-                                    <div class="cell"> </div>
-                                % else:
-                                    % if questions["sample_registration"][field]["field"] == "text":
-                                        <div class="cell">
-                                            <input type="text" value="" name="${field}" id="${field}" maxlength="100"/>
-                                        </div>
-                                    % elif questions["sample_registration"][field]["field"] == "select":
-                                        <div class="cell">
-                                            <select name="${field}">
-                                                % for subid in questions["sample_registration"][field]["fields"]:
-                                                    <option value="${subid}">${questions["sample_registration"][field]["fields"][subid]}</option>
-                                                % endfor
-                                            </select>
-                                        </div>
-                                    % elif questions["sample_registration"][field]["field"] == "date":
-                                        <div class="cell">
-                                            <input type="text" value"dd/mm/yy" name="${field}" id="${field}" maxlength="8"/>
-                                        </div>
-                                    % endif
-                                % endif
-                            % endfor %
-                            <div class="cell">
-                                <select name="related_file" id="related_file">
-                                    % for key, value in enumerate(files):
-                                        <option value="${value}" selected>${value}</option>
-                                    % endfor
-                                </select>
-                            </div>
-                        </div>
-                    </div>-->
                     <br/>
-                    <input type="text" value="" id="handson-data" style="display:none"/>
+                    <div id="example" class="handsontable"></div>
+                    <br/>
+                    <input type="text" value="" id="vcf_data" name="vcf_data" style="display:none"/>
                     <input type="submit" value="Import" id="save-handson"/>
                     <br/>
                 </form>
