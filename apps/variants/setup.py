@@ -26,7 +26,7 @@ def expand_package_data(src_dirs, strip=""):
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 setup(
-  name = "GEMAN",
+  name = "variants",
   version = "0.1",
   url = 'TODO',
   description = 'TODO',
@@ -34,14 +34,14 @@ setup(
   packages = find_packages('src'),
   package_dir = {'': 'src'},
   install_requires = ['setuptools', 'desktop'],
-  entry_points = { 'desktop.sdk.application': 'GEMAN=GEMAN' },
+  entry_points = { 'desktop.sdk.application': 'variants=variants' },
   zip_safe = False,
   package_data = {
     # Include static resources.  Package_data doesn't
     # deal well with directory globs, so we enumerate
     # the files manually.
-    'GEMAN': expand_package_data(
-      ["src/GEMAN/templates", "src/GEMAN/static", "src/GEMAN/static/GEMAN.css", "src/GEMAN/static/css/GEMAN.css"],
-      "src/GEMAN/")
+    'variants': expand_package_data(
+      ["src/variants/templates", "src/variants/static", "src/variants/static/variants.css", "src/variants/static/css/variants.css"],
+      "src/variants/")
   }
 )

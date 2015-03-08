@@ -1,10 +1,10 @@
 <%!from desktop.views import commonheader, commonfooter %>
 <%namespace name="shared" file="shared_components.mako" />
 
-${commonheader("GEMAN", "GEMAN", user) | n,unicode}
+${commonheader("variants", "variants", user) | n,unicode}
 ${shared.menubar(section='sample')}
 
-<link rel="stylesheet" href="/GEMAN/static/css/GEMAN.css">
+<link rel="stylesheet" href="/variants/static/css/variants.css">
 
 ## Use double hashes for a mako template comment
 ## Main body
@@ -29,7 +29,7 @@ ${shared.menubar(section='sample')}
         <h4>Add data to your samples files</h4>
         % if total_files > 0:
             Files found in your directory:<br/>
-            <form action="/GEMAN/sample/insert/interface/" method="GET">
+            <form action="/variants/sample/insert/interface/" method="GET">
                 <select name="vcf">
                     % for key, value in enumerate(files):
                         <option value="${value}" selected>${value}</option>
@@ -44,5 +44,5 @@ ${shared.menubar(section='sample')}
     </div>
   </div>
 </div>
-<link rel="stylesheet" href="/GEMAN/static/js/GEMAN.js">
+<link rel="stylesheet" href="/variants/static/js/variants.js">
 ${commonfooter(messages) | n,unicode}

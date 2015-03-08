@@ -29,7 +29,7 @@ $(document).ready(function() {
      //Sending the request
      $.ajax({
             type: 'POST',
-            url: '/GEMAN/api/general/insert/?user.name=cloudera',
+            url: '/variants/api/general/insert/?user.name=cloudera',
             data: params,        
             dataType: 'html',
             contentType: "application/json",    

@@ -15,7 +15,7 @@ from django.conf.urls.defaults import patterns, url
     Exceptions: the main index, the database initialization.
 """
 
-urlpatterns = patterns('GEMAN',
+urlpatterns = patterns('variants',
     url(r'^$', 'views.index'),
   
     url(r'^database/initialize/$', 'views.database_initialize'),

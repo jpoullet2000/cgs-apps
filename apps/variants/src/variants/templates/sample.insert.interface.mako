@@ -36,7 +36,7 @@ $(document).ready(function () {
             % endif
         % endfor %
                 ],
-        colWidths: [100, 130, 100, 100, 100, 150, 150, 150, 200, 220],
+        colWidths: [100, 145, 100, 100, 100, 150, 150, 125, 200, 175],
         contextMenu: true,
         columns: [
                 % for field in q:
@@ -95,11 +95,11 @@ $(document).ready(function () {
 </script>
 
 
-${commonheader("GEMAN", "GEMAN", user) | n,unicode}
-${shared.menubar(section='query')}
+${commonheader("variants", "variants", user) | n,unicode}
+${shared.menubar(section='sample')}
 
-<link rel="stylesheet" href="/GEMAN/static/css/GEMAN.css">
-<script src="/GEMAN/static/js/GEMAN.js"></script>
+<link rel="stylesheet" href="/variants/static/css/variants.css">
+<script src="/variants/static/js/variants.js"></script>
 
 ## Use double hashes for a mako template comment
 ## Main body
@@ -107,7 +107,7 @@ ${shared.menubar(section='query')}
 <div class="container-fluid">
     <div class="card">
         <h2 class="card-heading simple">Adding samples data</h2>
-        <div class="card-body GEMAN">
+        <div class="card-body variants">
             <div class="great-info" id="result"></div><br/><br/>
 
             <div class="insert-samples">
@@ -126,7 +126,7 @@ ${shared.menubar(section='query')}
                             <strong><font color="green">Data correctly added</font></strong>
                         % endif
                     % endif
-                    <br/>
+                        <br/>
                     <div id="example" class="handsontable"></div>
                     <br/>
                     <input type="text" value="" id="vcf_data" name="vcf_data" style="display:none"/>

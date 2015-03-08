@@ -1,10 +1,10 @@
 <%!from desktop.views import commonheader, commonfooter %>
 <%namespace name="shared" file="shared_components.mako" />
 
-${commonheader("GEMAN", "GEMAN", user) | n,unicode}
+${commonheader("variants", "variants", user) | n,unicode}
 ${shared.menubar(section='query')}
 
-<link rel="stylesheet" href="/GEMAN/static/css/GEMAN.css">
+<link rel="stylesheet" href="/variants/static/css/variants.css">
 
 ## Use double hashes for a mako template comment
 ## Main body
@@ -42,5 +42,5 @@ ${shared.menubar(section='query')}
     </div>
   </div>
 </div>
-<link rel="stylesheet" href="/GEMAN/static/js/GEMAN.js">
+<link rel="stylesheet" href="/variants/static/js/variants.js">
 ${commonfooter(messages) | n,unicode}

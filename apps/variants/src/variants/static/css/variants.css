@@ -26,7 +26,7 @@
 	left: 3px;
 }
 
-.GEMAN p {
+.variants p {
   display: inline-block;
   width: 50%;
   text-align: center;
@@ -100,15 +100,15 @@
   text-align: left;
 }
 
-/* New code related to geman and not genomicAPI */
+/* New code related to variants and not genomicAPI */
 
-.GEMAN .insert-samples form{
+.variants .insert-samples form{
     display: inline-block;
     width: 100%;
     text-align: center;
 }
 
-.GEMAN .insert-samples .left-box{display: inline-block; text-align: center; width: 200px;}
-.GEMAN .insert-samples .right-boxes{display: inline-block; text-align: left; }
-.GEMAN .insert-samples .right-box{display: inline-block; text-align: center; width: 200px;}
-.GEMAN .insert-samples .cell{display: inline-block; height: 50px; width: 190px;}
+.variants .insert-samples .left-box{display: inline-block; text-align: center; width: 200px;}
+.variants .insert-samples .right-boxes{display: inline-block; text-align: left; }
+.variants .insert-samples .right-box{display: inline-block; text-align: center; width: 200px;}
+.variants .insert-samples .cell{display: inline-block; height: 50px; width: 190px;}

@@ -1,7 +1,7 @@
 from django import forms
 
 class query_form(forms.Form):
-    query_types = ((0, 'genomic API'), (1, 'Google Genomics'), (2, 'HBase'), (3, 'Hive'))
+    query_types = ((0, 'CGS - variants'), (1, 'Google Genomics'), (2, 'HBase'), (3, 'Hive'))
     query_type = forms.ChoiceField(choices=query_types)
     query = forms.CharField(min_length=1,max_length=2000, label="Query")
   

@@ -13,7 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-DJANGO_APPS = [ "GEMAN" ]
+DJANGO_APPS = [ "variants" ]
 REQUIRES_HADOOP = False
 MENU_INDEX = 100
-ICON = "/GEMAN/static/art/icon_genomicAPI_48.png"
+ICON = "/variants/static/art/icon_genomicAPI_48.png"

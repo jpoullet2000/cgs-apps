@@ -15,7 +15,7 @@ sudo find hue -type f -exec chmod 0777 {} \;
 ```
 
 Database installation:
-Launch hue, then go to http://quickstart.cloudera:8888/genomicAPI/init/
+Launch hue, then go to http://quickstart.cloudera:8888/variants/database/initialize/
 
 
 ##**API**

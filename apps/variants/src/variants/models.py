@@ -6,12 +6,12 @@ class QueryModel(models.Model):
 	For now, the formatted query string is temporary as I think this is 
 	not the best representation for our needs. 
 	"""	
-	GENOMIC_API = "GAPI"
+	CGS_SYSTEM = "CGS"
 	GOOGLE_GENOMICS = "GGEN"
 	HBASE = "HBASE"
 	HIVE = "HIVE"
 	SUPPORTED_LANGUAGES = (
-		(GENOMIC_API, 'Genomic API'),
+		(CGS_SYSTEM, 'CGS System'),
 		(GOOGLE_GENOMICS, 'Google genomics'),
 		(HBASE, 'HBase'),
 		(HIVE, 'Hive'),
@@ -19,7 +19,7 @@ class QueryModel(models.Model):
 	
 	raw = models.CharField("Raw query", max_length=500)
 	formatted = models.CharField("Formatted query", max_length=500)
-	language = models.CharField(max_length=4,choices=SUPPORTED_LANGUAGES, default=GENOMIC_API)
+	language = models.CharField(max_length=4,choices=SUPPORTED_LANGUAGES, default=CGS_SYSTEM)
 	user_id = models.IntegerField("User id which created this query")
 	creation_date = models.DateField("Query date", auto_now_add=True)
 	execution_date = models.DateField("Execution date", auto_now_add=True)

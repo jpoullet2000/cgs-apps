@@ -262,15 +262,15 @@ def sample_insert_questions(request):
     questions = {
         "sample_registration":{
             "main_title": "Sample",
-            "original_sample_id": {"question": "Original sample id (for derived samples)", "field": "text", "regex": "a-zA-Z0-9_-", "mandatory": True},
+            "original_sample_id": {"question": "Original sample id", "field": "text", "regex": "a-zA-Z0-9_-", "mandatory": True},
             "patient_id": {"question": "Patient id", "field": "text", "regex": "a-zA-Z0-9_-", "mandatory": True},
             "biobank_id": {"question": "Biobank id", "field": "text", "regex": "a-zA-Z0-9_-"},
             "prenatal_id": {"question": "Prenatal id", "field": "text", "regex": "a-zA-Z0-9_-"},
-            "sample_collection_date": {"question": "Date of sample collection", "field": "date", "regex": "date"},
+            "sample_collection_date": {"question": "Date of collection", "field": "date", "regex": "date"},
             "collection_status": {"question": "Collection status", "field": "select", "fields":{"0":"collected","1":"not collected"}},
-            "sample_type": {"question": "Type of sample", "field": "select", "fields":{"0":"serum","1":"something else"}},
-            "biological_contamination": {"question": "Any biological contamination", "field": "select", "fields":{"0":"no","1":"yes"}},
-            "sample_storage_condition": {"question": "Sample storage condition", "field": "select", "fields":{"0":"0C","1":"1C","2":"2C","3":"3C","4":"4C"}},
+            "sample_type": {"question": "Sample type", "field": "select", "fields":{"0":"serum","1":"something else"}},
+            "biological_contamination": {"question": "Biological contamination", "field": "select", "fields":{"0":"no","1":"yes"}},
+            "sample_storage_condition": {"question": "Storage condition", "field": "select", "fields":{"0":"0C","1":"1C","2":"2C","3":"3C","4":"4C"}},
         },
     }
 
