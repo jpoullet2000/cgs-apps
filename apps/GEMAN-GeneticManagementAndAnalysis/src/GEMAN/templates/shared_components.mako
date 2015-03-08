@@ -21,7 +21,7 @@ def is_selected(section, matcher):
              </li>
              <li class="${is_selected(section, 'index')}"><a href="/GEMAN/">Index</a></li>
              <li class="${is_selected(section, 'query')}"><a href="/GEMAN/query/index/interface/">Query</a></li>
-             <li class="${is_selected(section, 'sample')}"><a href="/GEMAN/sample/index/interface/">Query</a></li>
+             <li class="${is_selected(section, 'sample')}"><a href="/GEMAN/sample/index/interface/">Sample</a></li>
           </ul>
         </div>
       </div>

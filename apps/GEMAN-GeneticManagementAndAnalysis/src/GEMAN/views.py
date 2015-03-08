@@ -27,10 +27,6 @@ from hadoop.fs.hadoopfs import Hdfs
 from django.template.defaultfilters import stringformat, filesizeformat
 from filebrowser.lib.rwx import filetype, rwx
 
-""" ************** """
-""" USER INTERFACE """
-""" ************** """
-
 def index(request):
     """ Display the first page of the application """
 
@@ -47,12 +43,52 @@ def query_index_interface(request):
     return render('query.index.interface.mako', request, locals())
 
 """ DISPLAY FILES PREVIOUSLY UPLOADED TO ADD SAMPLE DATA """
+def sample_index_interface(request):
 
+    # We take the files in the current user directory
+    stats = request.fs.listdir_stats(directory_current_user(request))
+    data = [_massage_stats(request, stat) for stat in stats]
+    files = {}
+    for f in data:
+        if f['name'].endswith(".vcf"):
+            files[f['name']] = f['name']
+    total_files = len(files)
+
+    return render('sample.index.interface.mako', request, locals())
 
 """ INSERT DATA FOR SAMPLE """
 def sample_insert_interface(request):
     """ Insert the data of one or multiple sample in the database """
+    error_get = False
+    error_sample = False
 
+    # We take the file received
+    if 'vcf' in request.GET:
+        filename = request.GET['vcf']
+    else:
+        error_get = True
+        return render('sample.insert.interface.mako', request, locals())
+
+    # We take the files in the current user directory
+    stats = request.fs.listdir_stats(directory_current_user(request))
+    data = [_massage_stats(request, stat) for stat in stats]
+    length = 0
+    for f in data:
+        if f['name'] == filename:
+            length = f['stats']['size']
+            break
+
+    if length == 0:
+        # File not found
+        error_get = True
+        return render('sample.insert.interface.mako', request, locals())
+
+    # We take the number of samples (and their name) in the vcf file
+    samples = sample_insert_vcfinfo(request, filename, length)
+    samples_quantity = len(samples)
+    if samples_quantity == 0:
+        error_sample = True
+        return render('sample.insert.interface.mako', request, locals())
 
     # We take the list of questions the user has to answer, and as dict in python is not ordered, we use an intermediary list
     # We also receive the different files previously uploaded by the user
@@ -78,7 +114,30 @@ def sample_insert(request):
 
     result = {'status': -1,'data': {}}
 
-    # Some checks first about the data
+    # We take the file received
+    if 'vcf' in request.GET:
+        filename = request.GET['vcf']
+    else:
+        result['status'] = 0
+        result['error'] = 'No vcf file was given.'
+        return HttpResponse(json.dumps(result), mimetype="application/json")
+
+    # We take the files in the current user directory
+    stats = request.fs.listdir_stats(directory_current_user(request))
+    data = [_massage_stats(request, stat) for stat in stats]
+    length = 0
+    for f in data:
+        if f['name'] == filename:
+            length = f['stats']['size']
+            break
+
+    if length == 0:
+        # File not found
+        result['status'] = 0
+        result['error'] = 'The vcf file given was not found in the cgs file system.'
+        return HttpResponse(json.dumps(result), mimetype="application/json")
+
+    # Some checks first about the sample data
     if request.method != 'POST' or not request.POST:
         result['status'] = 0
         result['error'] = 'You have to send a POST request'
@@ -213,6 +272,36 @@ def sample_insert_questions(request):
 
     return questions, q, files
 
+def sample_insert_vcfinfo(request, filename, total_length):
+    """ Return the different samples found in the given vcf file """
+
+    offset = 0
+    length = min(1024*1024*5,total_length)
+    path = directory_current_user(request)+"/"+filename
+
+    # We read the text and analyze it
+    while offset < total_length:
+        text = request.fs.read(path, offset, length)
+        lines = text.split("\n")
+        samples = []
+        for line in lines:
+            info = line.split("\t")
+            if info[0] == '#CHROM':
+
+                # We add the samples information
+                for i in xrange(9, len(info)):
+                    samples.append(info[i])
+
+                # We can stop it here
+                break
+
+        if len(samples) > 0:
+            break
+        else:
+            offset = offset+length
+
+    # We return the different samples in the file
+    return samples
 
 """ INITIALIZE THE DATABASE """
 def database_initialize(request):
@@ -654,7 +743,7 @@ def directory_current_user(request):
     except Exception:
         pass
 
-    return path+"/user-data/"
+    return path
 
 def _massage_stats(request, stats):
     """

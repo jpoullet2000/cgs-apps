@@ -13,30 +13,19 @@
 <script>
 $(document).ready(function () {
     var data = [
-           ['Sample 1'],
-           ['Sample 2'],
-           ['Sample 3'],
-        ];
-    var titles = [
-
-        ['Sample'],
-        ['Original sample id'],
-        ['Patient id'],
-        ['Biobank id'],
-        ['Prenatal id'],
-        ['Date of sample collection'],
-        ['Collection status'],
-        ['Type of sample'],
-        ['Biological contamination'],
-        ['Sample storage condition'],
-    ],
+            % if not error_sample:
+                % for key, value in enumerate(samples):
+                    ['${value}'],
+                % endfor
+            % endif
+            ],
     container = document.getElementById('example'),
     hot;
 
     hot = new Handsontable(container, {
         data: data,
         minSpareRows: 1,
-        maxRows: 3,
+        maxRows: ${samples_quantity},
         maxCols: 10,
         colHeaders: [
         % for field in q:
@@ -107,7 +96,11 @@ ${shared.menubar(section='query')}
 
             <div class="insert-samples">
                 <form action="" method="POST" name="insert-form" id="handson-form">
-
+                % if error_get:
+                    <strong><font color="red">You have to give a vcf file!</font></strong>
+                % elif error_sample:
+                    <strong><font color="red">We have found no sample information in the vcf. <br/>The file may be corrupted or the format not taken into account in the current version of the code.</font></strong>
+                % else:
                     <div id="example" class="handsontable"></div>
 
                     <!-- If we already got the form, we display the result-->
@@ -179,6 +172,7 @@ ${shared.menubar(section='query')}
                     <input type="submit" value="Import" id="save-handson"/>
                     <br/>
                 </form>
+                % endif
             </div>
         </div>
     </div>
