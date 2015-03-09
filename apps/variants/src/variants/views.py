@@ -50,7 +50,7 @@ def sample_index_interface(request):
     data = [_massage_stats(request, stat) for stat in stats]
     files = {}
     for f in data:
-        if f['name'].endswith(".vcf"):
+        if f['name'].endswith(".vcf") and f['type'] == 'file':
             files[f['name']] = f['name']
     total_files = len(files)
 

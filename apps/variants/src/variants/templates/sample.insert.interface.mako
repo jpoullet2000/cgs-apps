@@ -135,10 +135,10 @@ ${shared.menubar(section='sample')}
                         % endif
                     % endif
                         <br/>
-                        <div style="display:inline-block;width:80%;height:500px;overflow: scroll;">
+                        <div style="display:inline-block;max-width:95%;max-height:500px;overflow: scroll;">
                             <div id="example" class="handsontable"></div>
                         </div>
-                    <br/>
+                    <br/><br/>
                     <input type="text" value="" id="vcf_data" name="vcf_data" style="display:none"/>
                     <input type="submit" value="Import" id="save-handson"/>
                     <br/>
