@@ -13,7 +13,7 @@
 <script>
 $(document).ready(function () {
     var data = [
-            % if not error_sample:
+            % if not error_sample and not error_get:
                 % for key, value in enumerate(samples):
                     ['${value}'],
                 % endfor
@@ -25,20 +25,24 @@ $(document).ready(function () {
     hot = new Handsontable(container, {
         data: data,
         minSpareRows: 1,
+        fixedColumnsLeft:1,
         maxRows: ${samples_quantity},
         maxCols: 10,
         colHeaders: [
-        % for field in q:
-            % if field == "main_title":
-                '${questions["sample_registration"][field]}',
-            % else:
-                '${questions["sample_registration"][field]['question']}',
-            % endif
-        % endfor %
+        % if q:
+            % for field in q:
+                % if field == "main_title":
+                    '${questions["sample_registration"][field]}',
+                % else:
+                    '${questions["sample_registration"][field]['question']}',
+                % endif
+            % endfor %
+        % endif
                 ],
         colWidths: [100, 145, 100, 100, 100, 150, 150, 125, 200, 175],
         contextMenu: true,
         columns: [
+        % if q:
                 % for field in q:
                     % if field == "main_title":
                         {strict: true,allowInvalid: false},
@@ -56,6 +60,7 @@ $(document).ready(function () {
                         % endif
                     % endif
                 % endfor %
+        % endif
         ],
         cells: function (row, col, prop) {
             var cellProperties = {};

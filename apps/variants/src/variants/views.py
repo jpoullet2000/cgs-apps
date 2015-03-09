@@ -61,6 +61,7 @@ def sample_insert_interface(request):
     """ Insert the data of one or multiple sample in the database """
     error_get = False
     error_sample = False
+    samples_quantity = 0
 
     # We take the file received
     if 'vcf' in request.GET:
