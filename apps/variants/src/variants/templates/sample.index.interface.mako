@@ -31,7 +31,7 @@ ${shared.menubar(section='sample')}
             Files found in your directory:<br/>
             <form action="/variants/sample/insert/interface/" method="GET">
                 <select name="vcf">
-                    % for key, value in enumerate(files):
+                    % for value in files:
                         <option value="${value}" selected>${value}</option>
                     % endfor
                 </select><br/>

@@ -40,7 +40,7 @@ $(document).ready(function () {
             % endfor %
         % endif
                 ],
-        colWidths: [100, 145, 100, 100, 100, 150, 150, 125, 200, 175],
+        colWidths: [100, 145, 100, 100, 100, 150, 150, 145, 200, 175],
         contextMenu: true,
         manualColumnResize: true,
         manualRowResize: true,
@@ -54,8 +54,8 @@ $(document).ready(function () {
                             {strict: true},
                         % elif questions["sample_registration"][field]["field"] == "select":
                             {type: 'autocomplete', source: [
-                                    % for subid in questions["sample_registration"][field]["fields"]:
-                                        '${questions["sample_registration"][field]["fields"][subid]}',
+                                    % for subfield in questions["sample_registration"][field]["fields"]:
+                                        '${subfield}',
                                     % endfor
                                ], strict: true, allowInvalid: false},
                         % elif questions["sample_registration"][field]["field"] == "date":

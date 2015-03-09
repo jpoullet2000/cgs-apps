@@ -46,12 +46,8 @@ def query_index_interface(request):
 def sample_index_interface(request):
 
     # We take the files in the current user directory
-    stats = request.fs.listdir_stats(directory_current_user(request))
-    data = [_massage_stats(request, stat) for stat in stats]
-    files = {}
-    for f in data:
-        if f['name'].endswith(".vcf") and f['type'] == 'file':
-            files[f['name']] = f['name']
+    init_path = directory_current_user(request)
+    files = list_directory_content(request, init_path, ".vcf", False)
     total_files = len(files)
 
     return render('sample.index.interface.mako', request, locals())
@@ -71,11 +67,12 @@ def sample_insert_interface(request):
         return render('sample.insert.interface.mako', request, locals())
 
     # We take the files in the current user directory
-    stats = request.fs.listdir_stats(directory_current_user(request))
-    data = [_massage_stats(request, stat) for stat in stats]
+    init_path = directory_current_user(request)
+    files = list_directory_content(request, init_path, ".vcf", True)
     length = 0
-    for f in data:
-        if f['name'] == filename:
+    for f in files:
+        new_name = f['path'].replace(init_path+"/","", 1)
+        if new_name == filename:
             length = f['stats']['size']
             break
 
@@ -119,11 +116,12 @@ def sample_insert(request):
         return HttpResponse(json.dumps(result), mimetype="application/json")
 
     # We take the files in the current user directory
-    stats = request.fs.listdir_stats(directory_current_user(request))
-    data = [_massage_stats(request, stat) for stat in stats]
+    init_path = directory_current_user(request)
+    files = list_directory_content(request, init_path, ".vcf", True)
     length = 0
-    for f in data:
-        if f['name'] == filename:
+    for f in files:
+        new_name = f['path'].replace(init_path+"/","", 1)
+        if new_name == filename:
             length = f['stats']['size']
             break
 
@@ -193,12 +191,12 @@ def sample_insert(request):
             # We take the related field
             field = q[key]
             info = questions['sample_registration'][field]
-            fprint(str(info))
+
             # We check if the information is correct
             if not type(info) is dict:
                 pass # Nothing to do here, it's normal. We could compare the sample id received from the ones found in the file maybe.
             elif info['field'] == 'select':
-                if not answer in info['fields'].values():
+                if not answer in info['fields']:
                     result['status'] = 0
                     result['error'] = 'The value "'+str(answer)+'" given for the field "'+field+'" is invalid (Valid values: '+str(info['fields'])+').'
                     return HttpResponse(json.dumps(result), mimetype="application/json")
@@ -268,10 +266,10 @@ def sample_insert_questions(request):
             "biobank_id": {"question": "Biobank id", "field": "text", "regex": "a-zA-Z0-9_-"},
             "prenatal_id": {"question": "Prenatal id", "field": "text", "regex": "a-zA-Z0-9_-"},
             "sample_collection_date": {"question": "Date of collection", "field": "date", "regex": "date"},
-            "collection_status": {"question": "Collection status", "field": "select", "fields":{"0":"collected","1":"not collected"}},
-            "sample_type": {"question": "Sample type", "field": "select", "fields":{"0":"serum","1":"something else"}},
-            "biological_contamination": {"question": "Biological contamination", "field": "select", "fields":{"0":"no","1":"yes"}},
-            "sample_storage_condition": {"question": "Storage condition", "field": "select", "fields":{"0":"0C","1":"1C","2":"2C","3":"3C","4":"4C"}},
+            "collection_status": {"question": "Collection status", "field": "select", "fields":("collected","not collected")},
+            "sample_type": {"question": "Sample type", "field": "select", "fields":("serum","something else")},
+            "biological_contamination": {"question": "Biological contamination", "field": "select", "fields":("no","yes")},
+            "sample_storage_condition": {"question": "Storage condition", "field": "select", "fields":("0C","1C","2C","3C","4C")},
         },
     }
 
@@ -280,11 +278,7 @@ def sample_insert_questions(request):
         "biological_contamination", "sample_storage_condition")
 
     # We also load the files
-    stats = request.fs.listdir_stats(directory_current_user(request))
-    data = [_massage_stats(request, stat) for stat in stats]
-    files = {}
-    for f in data:
-        files[f['name']] = f['name']
+    files = list_directory_content(request, directory_current_user(request), ".vcf", False)
 
     return questions, q, files
 
@@ -750,6 +744,29 @@ def fprint(txt):
     f.write("Line: "+str(current_line)+" in views.py: "+str(txt)+"\n")
     f.close()
     return True
+
+def list_directory_content(request, first_path, extension, save_stats=False):
+    """ Load the content of a directory and its subdirectories, according to the given extension. Find only files. """
+
+    # Recursive functions are the root of all evil.
+    paths = []
+    paths.append(first_path)
+    files = []
+    while len(paths) > 0:
+        current_path = paths.pop()
+        stats = request.fs.listdir_stats(current_path)
+        data = [_massage_stats(request, stat) for stat in stats]
+        for f in data:
+            if f['name'].endswith(extension) and f['type'] == 'file':
+                destination_file = f['path'].replace(first_path+"/","",1)
+                if save_stats == True:
+                    files.append(f)
+                else:
+                    files.append(destination_file)
+            elif f['type'] == 'dir' and f['name'] != '.Trash' and f['name'] != '.' and f['name'] != '..':
+                paths.append(f['path'])
+
+    return files
 
 def directory_current_user(request):
     """ Return the current user directory """
