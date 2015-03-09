@@ -25,7 +25,8 @@ $(document).ready(function () {
     hot = new Handsontable(container, {
         data: data,
         minSpareRows: 1,
-        fixedColumnsLeft:1,
+        fixedColumnsLeft: 1,
+        fixedRowsTop: 0,
         maxRows: ${samples_quantity},
         maxCols: 10,
         colHeaders: [
@@ -41,6 +42,8 @@ $(document).ready(function () {
                 ],
         colWidths: [100, 145, 100, 100, 100, 150, 150, 125, 200, 175],
         contextMenu: true,
+        manualColumnResize: true,
+        manualRowResize: true,
         columns: [
         % if q:
                 % for field in q:
@@ -132,7 +135,9 @@ ${shared.menubar(section='sample')}
                         % endif
                     % endif
                         <br/>
-                    <div id="example" class="handsontable"></div>
+                        <div style="display:inline-block;width:80%;height:500px;overflow: scroll;">
+                            <div id="example" class="handsontable"></div>
+                        </div>
                     <br/>
                     <input type="text" value="" id="vcf_data" name="vcf_data" style="display:none"/>
                     <input type="submit" value="Import" id="save-handson"/>
