@@ -127,21 +127,24 @@ ${shared.menubar(section='sample')}
                 % else:
 
                     <!-- If we already got the form, we display the result-->
-                    % if result:
-                        % if result['status'] != 1:
-                            <strong><font color="red">${result['error']}</font></strong>
-                        % else:
-                            <strong><font color="green">Data correctly added</font></strong>
-                        % endif
-                    % endif
+                    % if result and result['status'] == 1:
+                            <strong><font color="green">Data correctly added.</font></strong>
                         <br/>
-                        <div style="display:inline-block;max-width:95%;max-height:500px;overflow: scroll;">
+                        <a href="/variants/sample/index/interface/">Go back to the main page</a>
+                    % else:
+                        % if result:
+                            <strong><font color="red">${result['error']}</font></strong><br/>
+                        % endif
+
+                            <br/>
+                        <div style="display:inline-block;max-width:95%;min-height:80px;max-height:500px;overflow: scroll;">
                             <div id="example" class="handsontable"></div>
                         </div>
-                    <br/><br/>
-                    <input type="text" value="" id="vcf_data" name="vcf_data" style="display:none"/>
-                    <input type="submit" value="Import" id="save-handson"/>
-                    <br/>
+                        <br/><br/>
+                        <input type="text" value="" id="vcf_data" name="vcf_data" style="display:none"/>
+                        <input type="submit" value="Import" id="save-handson"/>
+                        <br/>
+                    % endif
                 </form>
                 % endif
             </div>
