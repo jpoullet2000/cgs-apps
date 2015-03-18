@@ -1,14 +1,14 @@
 <%!from desktop.views import commonheader, commonfooter %>
 <%namespace name="shared" file="shared_components.mako" />
 
-<script src="https://code.jquery.com/jquery-1.11.1.min.js"></script>
+<script src="/variants/static/js/jquery-1.11.1.min.js"></script>
 
-<script src="http://handsontable.com/dist/handsontable.full.js"></script>
-<script src="http://handsontable.com/demo/js/moment/moment.js"></script>
-<script src="http://handsontable.com/demo/js/pikaday/pikaday.js"></script>
-<link rel="stylesheet" media="screen" href="http://handsontable.com/dist/handsontable.full.css">
-<link rel="stylesheet" media="screen" href="http://handsontable.com/demo/js/pikaday/css/pikaday.css">
-<link rel="stylesheet" media="screen" href="http://handsontable.com/demo/css/samples.css">
+<script src="/variants/static/js/handsontable.full.js"></script>
+<script src="/variants/static/js/moment.js"></script>
+<script src="/variants/static/js/pikaday.js"></script>
+<link rel="stylesheet" media="screen" href="/variants/static/css/handsontable.full.css">
+<link rel="stylesheet" media="screen" href="/variants/static/css/pikaday.css">
+<link rel="stylesheet" media="screen" href="/variants/static/css/samples.css">
 
 <script>
 $(document).ready(function () {
@@ -18,8 +18,8 @@ $(document).ready(function () {
                     ['${value}'],
                 % endfor
             % endif
-            ],
-    container = document.getElementById('example'),
+            ];
+    var container = document.getElementById('example'),
     hot;
 
     hot = new Handsontable(container, {
@@ -33,9 +33,9 @@ $(document).ready(function () {
         % if q:
             % for field in q:
                 % if field == "main_title":
-                    '${questions["sample_registration"][field]}',
+                    ['${questions["sample_registration"][field]}'],
                 % else:
-                    '${questions["sample_registration"][field]['question']}',
+                    ['${questions["sample_registration"][field]['question']}'],
                 % endif
             % endfor %
         % endif
@@ -114,7 +114,12 @@ ${shared.menubar(section='sample')}
 
 <div class="container-fluid">
     <div class="card">
-        <h2 class="card-heading simple">Adding samples data</h2>
+        <h2 class="card-heading simple">
+            %if filename:
+                Adding information for the samples in the file "${filename}"</h2>
+            % else:
+                Adding information to samples
+            %endif
         <div class="card-body variants">
             <div class="great-info" id="result"></div><br/><br/>
 
@@ -137,9 +142,9 @@ ${shared.menubar(section='sample')}
                         % endif
 
                             <br/>
-                        <div style="display:inline-block;max-width:95%;min-height:80px;max-height:500px;overflow: scroll;">
+                        <div style="display:inline-block;max-width:95%;min-height:200px;max-height:500px;overflow: scroll;">
                             <div id="example" class="handsontable"></div>
-                        </div>
+                       </div>
                         <br/><br/>
                         <input type="text" value="" id="vcf_data" name="vcf_data" style="display:none"/>
                         <input type="submit" value="Import" id="save-handson"/>
