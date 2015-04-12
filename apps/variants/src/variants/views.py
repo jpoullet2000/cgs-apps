@@ -11,6 +11,10 @@ import bz2
 import os
 import inspect
 
+from subprocess import *
+import subprocess
+import requests
+
 import logging
 import json
 from desktop.context_processors import get_app_name
@@ -438,6 +442,11 @@ def sample_search(request):
 
 def documentation(request):
     """ Display the main page of the user documentation """
+
+    # START: TESTS FOR BENCHMARKS
+
+    # END
+
     return render('documentation.mako', request, locals())
 
 def variant_search(request):
@@ -560,9 +569,186 @@ def api_insert_general(request):
 
 
 
+""" ********** """
+""" BENCHMARKS """
+""" ********** """
 
+def benchmarks_variant_query(request, benchmark_table):
+    result = {'status': -1,'data': {},'query_time': 0}
 
+    if request.method != 'POST' or not request.POST or not request.POST['query']:
+        result['status'] = 0
+        result['error'] = 'No "query" post field received.'
+        return HttpResponse(json.dumps(result), mimetype="application/json")
 
+    # We take the data
+    try:
+        query = str(request.POST['variants'])
+    except:
+        result['status'] = 0
+        result['error'] = 'Invalid post field received.'
+        return HttpResponse(json.dumps(result), mimetype="application/json")
+
+    # TODO: make the query and measure the execution time
+
+    # The end
+    return HttpResponse(json.dumps(result), mimetype="application/json")
+
+def benchmarks_variant_import(request, benchmark_table):
+    result = {'status': -1,'data': {}, 'query_time': 0, 'text_time':0, 'hdfs_time': 0}
+    result['info'] = request.GET
+
+    if not 'database' in request.GET or (request.GET['database'] != "impala" and request.GET['database'] != "hbase" and request.GET['database'] != "hive"):
+        result['status'] = 0
+        result['error'] = 'No "database" field received (or an invalid one). It should be "impala", "hbase" or "hive"'
+        return HttpResponse(json.dumps(result), mimetype="application/json")
+
+    if not 'variants' in request.GET:
+        result['status'] = 0
+        result['error'] = 'No "variants" field received.'
+        return HttpResponse(json.dumps(result), mimetype="application/json")
+
+    if not 'patient' in request.GET:
+        result['status'] = 0
+        result['error'] = 'No "patient" field received.'
+        return HttpResponse(json.dumps(result), mimetype="application/json")
+
+    # We download the file
+    variants_file = str(request.GET['variants'])
+    try:
+        r = requests.get(variants_file)
+        variants = r.text
+    except:
+        result['status'] = 0
+        result['error'] = 'The download of the file '+variants_file+' failed.'
+        return HttpResponse(json.dumps(result), mimetype="application/json")
+
+    # We take the data
+    variants = variants.replace('\\\"','\"')
+    try:
+        variants = json.loads(variants)
+    except:
+        result['status'] = 0
+        result['error'] = 'Invalid json received.'
+        result['json'] = variants
+        return HttpResponse(json.dumps(result), mimetype="application/json")
+
+    # We prepare the tsv file to be able to insert the data after that
+    st = time.time()
+    try:
+        header, tsv = dict_to_tsv(variants, 'vcf')
+        patient = str(request.GET['patient'])
+        tsv_path = 'gdegols_benchmarks_'+benchmark_table+'_'+patient+'_'+str(create_random_file_id())+'.csv'
+    except:
+        result['status'] = 0
+        result['error'] = 'Impossible to create the tsv file from the json'
+        result['json'] = variants
+        return HttpResponse(json.dumps(result), mimetype="application/json")
+    result['text_time'] = time.time() - st
+
+    # We create a file in hdfs and put the data there
+    st = time.time()
+    try:
+        path = directory_current_user(request) + "/" + tsv_path
+        request.fs.create(path, data=tsv)
+    except:
+        result['status'] = 0
+        result['error'] = 'Impossible to create a file in hdfs.'
+        return HttpResponse(json.dumps(result), mimetype="application/json")
+    result['hdfs_time'] = time.time() - st
+
+    # We try to load the data
+    target_table = 'gdegols_benchmarks_'+benchmark_table
+    args = ['hbase org.apache.hadoop.hbase.mapreduce.ImportTsv -Dimporttsv.separator=\';\' -Dimporttsv.columns=HBASE_ROW_KEY,'+header+' '+target_table+' '+path]
+    st = time.time()
+    p = subprocess.call(args, shell=True)
+    #args = ["hadoop", "jar" , "/usr/lib/hbase/hbase-0.94.6-cdh4.3.0-security.jar", "importtsv", "-Dimporttsv.separator='\t'", "-Dimporttsv.columns=HBASE_ROW_KEY,f:count", target_table, tsv_path]
+    result['query_time'] = time.time() - st
+
+    result['tsv'] = path
+
+    #Returning the result
+    return HttpResponse(json.dumps(result), mimetype="application/json")
+
+def putToBenchmarksTable(line):
+    pass
+
+def dict_to_tsv(variants, column_family):
+    """ convert a dict of variants (from a json object) to a tsv file to import it later, we also return the column description """
+    fields_of_key, fields_of_filter, fields_of_value = table_configuration()
+    lines = []
+    header = ""
+
+    # We format the header
+    for field in fields_of_filter:
+        if header:
+            header += ","+column_family+":"+field[1]
+        else:
+            header = column_family+":"+field[1]
+
+    for field in fields_of_value:
+        if header:
+            header += ","+column_family+":"+field[1]
+        else:
+            header = column_family+":"+field[1]
+
+    # We format the variants
+    for key in variants:
+        variant = variants[key]
+
+        # We create the 'key'
+        """
+        key = variant['readGroupSets']['readGroups']['sampleId'] + '-' + variant['variants']['id'] + '-' \
+            + '0' + '-' + variant['variants']['info']['gene_symbol'] + '-' + variant['variants']['referenceName'] \
+            + variant['variants']['start']
+        """
+        key = str(variant['readGroupSets.readGroups.sampleId']) + '-' + str(variant['variants.id']) + '-' \
+            + '0' + '-' + str(variant['variants.info.gene_symbol']) + '-' + str(variant['variants.referenceName']) \
+            + str(variant['variants.start'])
+
+        # We create the different fields for the 'value'
+        value = ""
+        for field in fields_of_filter:
+            if value:
+                value += ";"+json_field_value(variant, field[0])
+            else:
+                value += json_field_value(variant, field[0])
+        for field in fields_of_value:
+            if value:
+                value += ";"+json_field_value(variant, field[0])
+            else:
+                value += json_field_value(variant, field[0])
+
+        lines.append(key + ";" + value)
+    text = "\n".join(lines)
+
+    return header, text
+
+def json_field_value(variant, field):
+    """ return the value of a specific field/column for the given variant, if none or 0, we return an empty string nonetheless """
+    if field in variant:
+        if str(variant[field]) != '0':
+            return str(variant[field])
+    return '0'
+
+def table_configuration():
+    """ Return the configuration of the table """
+    fields_of_key = [('readGroupSets.readGroups.sampleID','SI', 'string'), ('variants.info.gene_symbol','GS','string'), ('variants.info.gene_ensembl','GIE','string'),
+                ('variants.referenceName','C','string'), ('variants.start','P','int'), ('variants.id','ID','string'), ('variants.referenceBases', 'REF', 'string'),
+                ('variants.alternateBases','ALT','string'),('variants.quality','QU','float'),('variants.fileformat','FF','string')]
+    fields_of_filter = [('gatk','GAQ','string'),('variants.low_quality','LQ','string'),('variants.call.info.confidence_by_depth','AD','string'),
+                ('variants.call.info.read_depth','DPF','int'), ('variants.calls.info.genotype_quality','GQ','float'),('variants.genotype','GTP','string'),
+                ('variants.calls.info.genotype_likelihood','PL','string')]
+    fields_of_value = [('variants.info.allele_num','AC','int'),('variants.allele_frequency','AF','float'),('variants.info.number_genes','AN','int'),
+                    ('variants.info.rank_sum_test_base_qual','BQR','float'), ('variants.dbsnp','DB','int'), ('variants.calls.info.read_depth','DP','int'),
+                    ('variants.info.downsampled','DS','int'), ('variants.info.fraction_spanning_deletions','DEL','float'), ('variants.info.fisher_strand_bias','FS','float'),
+                    ('variants.info.largest_homopolymer','HR','int'), ('variants.info.haplotype_score','HSC','float'), ('variants.info.inbreeding_coefficient','IC','float'),
+                    ('variants.info.mapping_quality','MQ','float'), ('variants.info.mapping_quality_zero_reads','MQ0','float'),('variants.info.rank_sum_test_read_mapping_qual','MQRS','int'),
+                    ('variants.info.confidence_by_depth','QD','float'), ('variants.rank_sum_test_read_pos_bias','RPRS','float'), ('variants.strand_bias','SB','float'),
+                    ('variants.info.mle_allele_count','MLC','int'), ('variants.info.mle_allele_frequency','MLF','float'), ('variants.vcf','SID','string'),
+                    ('variants.rank_sum_test_alt_ref','CRS','float')]
+
+    return fields_of_key, fields_of_filter, fields_of_value
 
 """ ************** """
 """ SOME FUNCTIONS """
