@@ -675,7 +675,7 @@ def check_output(*popenargs, **kwargs):
 
 def benchmarks_variant_import(request, benchmark_table):
     # TODO: delete file after hbase import
-    result = {'status': -1, 'query_time': 0, 'text_time':0, 'hdfs_time': 0}
+    result = {'status': -1, 'query_time': 0, 'text_time':0, 'hdfs_time': 0, 'download_time': 0}
     result['info'] = request.GET
 
     if not 'database' in request.GET or (request.GET['database'] != "impala_text" and request.GET['database'] != "impala_parquet" and request.GET['database'] != "hbase" and request.GET['database'] != "hive"):
@@ -698,8 +698,11 @@ def benchmarks_variant_import(request, benchmark_table):
     # We download the file
     variants_file = str(request.GET['variants'])
     try:
+        st = time.time()
         r = requests.get(variants_file)
+        result['download_time'] = time.time() - st
         variants = r.text
+        result['download_length'] = len(variants)
     except:
         result['status'] = 0
         result['error'] = 'The download of the file '+variants_file+' failed.'
@@ -750,6 +753,9 @@ def benchmarks_variant_import(request, benchmark_table):
         #args = ["hadoop", "jar" , "/usr/lib/hbase/hbase-0.94.6-cdh4.3.0-security.jar", "importtsv", "-Dimporttsv.separator='\t'", "-Dimporttsv.columns=HBASE_ROW_KEY,f:count", target_table, tsv_path]
         result['query_time'] = time.time() - st
 
+        # For hbase we need to delete the file
+        request.fs._delete(path, recursive=False)
+
     elif database == 'impala_text':
 
         #Connexion to the db
@@ -768,6 +774,8 @@ def benchmarks_variant_import(request, benchmark_table):
         query = hql_query("LOAD DATA INPATH '"+path+"' INTO TABLE "+target_table+";")
         handle = db.execute_and_wait(query)
         result['query_time'] = time.time() - st
+
+        # Impala automatically moves the original file to its metastore so we don't need to delete it
 
     elif database == 'impala_parquet':
         result['status'] = 0
