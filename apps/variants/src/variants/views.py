@@ -576,9 +576,9 @@ def api_insert_general(request):
 def benchmarks_variant_query(request, benchmark_table):
     result = {'status': -1,'query_time': 0, 'output_length': -1, 'output': ''}
 
-    if not 'database' in request.GET or (request.GET['database'] != "impala_text" and request.GET['database'] != "impala_parquet" and request.GET['database'] != "hbase" and request.GET['database'] != "hive"):
+    if not 'database' in request.GET or (request.GET['database'] != "impala_text" and request.GET['database'] != "impala_parquet" and request.GET['database'] != "hbase" and request.GET['database'] != "hive_text" and request.GET['database'] != "hive_parquet"):
         result['status'] = 0
-        result['error'] = 'No "database" field received (or an invalid one). It should be "impala", "hbase" or "hive"'
+        result['error'] = 'No "database" field received (or an invalid one). It should be "impala_text", "impala_parquet", "hbase", "hive_text", "hive_parquet'
         return HttpResponse(json.dumps(result), mimetype="application/json")
     else:
         database = str(request.GET['database'])
@@ -602,8 +602,18 @@ def benchmarks_variant_query(request, benchmark_table):
     else:
         output_returned = False
 
-    # We execute the query. Be careful, the time to launch the hbase shell is around ~7s
+    # We define the table the query will work on (there will be no join so no problem to do that)
     query = str(request.GET['query'])
+    if database == "hbase":
+        target_table = 'gdegols_benchmarks_'+benchmark_table
+    elif database == "hive_text" or database == "impala_text":
+        target_table = 'gdegols_benchmarks_impala_text_'+benchmark_table
+    else:
+        target_table = 'gdegols_benchmarks_impala_parquet_'+benchmark_table
+
+    query = query.replace('benchmarks', target_table)
+
+    # We execute the query. Be careful, the time to launch the hbase shell is around ~7s
     #output = check_output(['echo scan \\\'gdegols_benchmarks_test\\\' | hbase shell'], shell=True)
     if database == "hbase" or database == "hive":
         if database == "hbase":
