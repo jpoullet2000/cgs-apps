@@ -574,28 +574,66 @@ def api_insert_general(request):
 """ ********** """
 
 def benchmarks_variant_query(request, benchmark_table):
-    result = {'status': -1,'data': {},'query_time': 0}
+    result = {'status': -1,'query_time': 0, 'output_length': -1, 'output': ''}
 
-    if request.method != 'POST' or not request.POST or not request.POST['query']:
+    if not 'database' in request.GET or (request.GET['database'] != "impala" and request.GET['database'] != "hbase" and request.GET['database'] != "hive"):
         result['status'] = 0
-        result['error'] = 'No "query" post field received.'
+        result['error'] = 'No "database" field received (or an invalid one). It should be "impala", "hbase" or "hive"'
         return HttpResponse(json.dumps(result), mimetype="application/json")
 
-    # We take the data
-    try:
-        query = str(request.POST['variants'])
-    except:
+    if not 'query' in request.GET:
         result['status'] = 0
-        result['error'] = 'Invalid post field received.'
+        result['error'] = 'No "query" field received.'
         return HttpResponse(json.dumps(result), mimetype="application/json")
 
-    # TODO: make the query and measure the execution time
+    if not 'stupid_verification' in request.GET or request.GET['stupid_verification'] != 'hIOFE56fgeEGmiumiomiPO998qs':
+        result['status'] = 0
+        result['error'] = 'No "stupid_verification" field received.'
+        return HttpResponse(json.dumps(result), mimetype="application/json")
+
+    output_max = 10*1024*1024;
+    if 'output' in request.GET and str(request.GET['output']) == '1':
+        output_returned = True
+
+        if 'output_max' in request.GET:
+            output_max = int(request.GET['output_max'])
+    else:
+        output_returned = False
+
+    # We execute the query. Be careful, the time to launch the hbase shell is around ~7s
+    query = str(request.GET['query'])
+    #output = check_output(['echo scan \\\'gdegols_benchmarks_test\\\' | hbase shell'], shell=True)
+    command_line = 'echo '+query.replace('\'','\\\'')+' | hbase shell'
+
+    if output_returned == True:
+        st = time.time()
+        output = check_output([command_line], shell=True)
+        result['query_time'] = time.time() - st
+        result['output_length'] = len(output)
+        result['output'] = output[:min(len(output),output_max)]
+    else:
+        st = time.time()
+        subprocess.call([command_line], shell=True)
+        result['query_time'] = time.time() - st
 
     # The end
     return HttpResponse(json.dumps(result), mimetype="application/json")
 
+def check_output(*popenargs, **kwargs):
+    process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+    output, unused_err = process.communicate()
+    retcode = process.poll()
+    if retcode:
+        cmd = kwargs.get("args")
+        if cmd is None:
+            cmd = popenargs[0]
+        error = subprocess.CalledProcessError(retcode, cmd)
+        error.output = output
+        raise error
+    return output
+
 def benchmarks_variant_import(request, benchmark_table):
-    result = {'status': -1,'data': {}, 'query_time': 0, 'text_time':0, 'hdfs_time': 0}
+    result = {'status': -1, 'query_time': 0, 'text_time':0, 'hdfs_time': 0}
     result['info'] = request.GET
 
     if not 'database' in request.GET or (request.GET['database'] != "impala" and request.GET['database'] != "hbase" and request.GET['database'] != "hive"):
@@ -669,9 +707,6 @@ def benchmarks_variant_import(request, benchmark_table):
 
     #Returning the result
     return HttpResponse(json.dumps(result), mimetype="application/json")
-
-def putToBenchmarksTable(line):
-    pass
 
 def dict_to_tsv(variants, column_family):
     """ convert a dict of variants (from a json object) to a tsv file to import it later, we also return the column description """
