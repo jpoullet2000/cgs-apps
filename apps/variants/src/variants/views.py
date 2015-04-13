@@ -633,13 +633,16 @@ def check_output(*popenargs, **kwargs):
     return output
 
 def benchmarks_variant_import(request, benchmark_table):
+    # TODO: delete file after hbase import
     result = {'status': -1, 'query_time': 0, 'text_time':0, 'hdfs_time': 0}
     result['info'] = request.GET
 
-    if not 'database' in request.GET or (request.GET['database'] != "impala" and request.GET['database'] != "hbase" and request.GET['database'] != "hive"):
+    if not 'database' in request.GET or (request.GET['database'] != "impala_text" and request.GET['database'] != "hbase" and request.GET['database'] != "hive"):
         result['status'] = 0
-        result['error'] = 'No "database" field received (or an invalid one). It should be "impala", "hbase" or "hive"'
+        result['error'] = 'No "database" field received (or an invalid one). It should be "impala_text", "hbase" or "hive"'
         return HttpResponse(json.dumps(result), mimetype="application/json")
+    else:
+        database = str(request.GET['database'])
 
     if not 'variants' in request.GET:
         result['status'] = 0
@@ -696,12 +699,39 @@ def benchmarks_variant_import(request, benchmark_table):
     result['hdfs_time'] = time.time() - st
 
     # We try to load the data
-    target_table = 'gdegols_benchmarks_'+benchmark_table
-    args = ['hbase org.apache.hadoop.hbase.mapreduce.ImportTsv -Dimporttsv.separator=\';\' -Dimporttsv.columns=HBASE_ROW_KEY,'+header+' '+target_table+' '+path]
-    st = time.time()
-    p = subprocess.call(args, shell=True)
-    #args = ["hadoop", "jar" , "/usr/lib/hbase/hbase-0.94.6-cdh4.3.0-security.jar", "importtsv", "-Dimporttsv.separator='\t'", "-Dimporttsv.columns=HBASE_ROW_KEY,f:count", target_table, tsv_path]
-    result['query_time'] = time.time() - st
+    if database == 'hbase':
+
+        # We simply use the shell
+        target_table = 'gdegols_benchmarks_'+benchmark_table
+        args = ['hbase org.apache.hadoop.hbase.mapreduce.ImportTsv -Dimporttsv.separator=\';\' -Dimporttsv.columns=HBASE_ROW_KEY,'+header+' '+target_table+' '+path]
+        st = time.time()
+        p = subprocess.call(args, shell=True)
+        #args = ["hadoop", "jar" , "/usr/lib/hbase/hbase-0.94.6-cdh4.3.0-security.jar", "importtsv", "-Dimporttsv.separator='\t'", "-Dimporttsv.columns=HBASE_ROW_KEY,f:count", target_table, tsv_path]
+        result['query_time'] = time.time() - st
+
+    elif database == 'impala_text':
+
+        #Connexion to the db
+        try:
+            query_server = get_query_server_config(name='impala')
+            db = dbms.get(request.user, query_server=query_server)
+        except Exception:
+            result['status'] = 0
+            result['error'] = 'Sorry, an error occured: Impossible to connect to the db.'
+            return HttpResponse(json.dumps(result), mimetype="application/json")
+
+        target_table = 'gdegols_benchmarks_impala_text_'+benchmark_table
+
+        # Executing the query
+        st = time.time()
+        query = hql_query("LOAD DATA INPATH '"+path+"' INTO TABLE "+target_table+";")
+        handle = db.execute_and_wait(query)
+        result['query_time'] = time.time() - st
+        result['query_text'] = "LOAD DATA INPATH '"+path+"' INTO TABLE "+target_table+";"
+
+    else:
+        result['status'] = 0
+        result['error'] = 'No corresponding database...'
 
     result['tsv'] = path
 
