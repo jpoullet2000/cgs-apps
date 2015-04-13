@@ -863,7 +863,7 @@ def table_configuration():
                     ('variants.info.mapping_quality','MQ','float'), ('variants.info.mapping_quality_zero_reads','MQ0','float'),('variants.info.rank_sum_test_read_mapping_qual','MQRS','int'),
                     ('variants.info.confidence_by_depth','QD','float'), ('variants.rank_sum_test_read_pos_bias','RPRS','float'), ('variants.strand_bias','SB','float'),
                     ('variants.info.mle_allele_count','MLC','int'), ('variants.info.mle_allele_frequency','MLF','float'), ('variants.vcf','SID','string'),
-                    ('variants.rank_sum_test_alt_ref','CRS','float')]
+                    ('variants.rank_sum_test_alt_ref','CRS','float'),('variants.change_type','CT','NA'),('variants.calls.info.zygosity','ZY','NA')]
 
     return fields_of_key, fields_of_filter, fields_of_value
 
