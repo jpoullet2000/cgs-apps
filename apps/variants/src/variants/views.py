@@ -576,10 +576,12 @@ def api_insert_general(request):
 def benchmarks_variant_query(request, benchmark_table):
     result = {'status': -1,'query_time': 0, 'output_length': -1, 'output': ''}
 
-    if not 'database' in request.GET or (request.GET['database'] != "impala" and request.GET['database'] != "hbase" and request.GET['database'] != "hive"):
+    if not 'database' in request.GET or (request.GET['database'] != "impala_text" and request.GET['database'] != "impala_parquet" and request.GET['database'] != "hbase" and request.GET['database'] != "hive"):
         result['status'] = 0
         result['error'] = 'No "database" field received (or an invalid one). It should be "impala", "hbase" or "hive"'
         return HttpResponse(json.dumps(result), mimetype="application/json")
+    else:
+        database = str(request.GET['database'])
 
     if not 'query' in request.GET:
         result['status'] = 0
@@ -603,7 +605,32 @@ def benchmarks_variant_query(request, benchmark_table):
     # We execute the query. Be careful, the time to launch the hbase shell is around ~7s
     query = str(request.GET['query'])
     #output = check_output(['echo scan \\\'gdegols_benchmarks_test\\\' | hbase shell'], shell=True)
-    command_line = 'echo '+query.replace('\'','\\\'')+' | hbase shell'
+    if database == "hbase":
+
+        command_line = 'echo '+query.replace('\'','\\\'')+' | hbase shell'
+
+    elif database == "hive":
+
+        command_line = 'hive -e \''+query+'\''
+
+    else:
+        # We could use "impala-shell", but we can do something a little bit prettier
+
+        #Connexion to the db
+        try:
+            query_server = get_query_server_config(name='impala')
+            db = dbms.get(request.user, query_server=query_server)
+        except Exception:
+            result['status'] = 0
+            result['error'] = 'Sorry, an error occured: Impossible to connect to the db.'
+            return HttpResponse(json.dumps(result), mimetype="application/json")
+
+        # Executing the query
+        st = time.time()
+        query = hql_query(query)
+        handle = db.execute_and_wait(query)
+        result['query_time'] = time.time() - st
+
 
     if output_returned == True:
         st = time.time()
@@ -637,9 +664,9 @@ def benchmarks_variant_import(request, benchmark_table):
     result = {'status': -1, 'query_time': 0, 'text_time':0, 'hdfs_time': 0}
     result['info'] = request.GET
 
-    if not 'database' in request.GET or (request.GET['database'] != "impala_text" and request.GET['database'] != "hbase" and request.GET['database'] != "hive"):
+    if not 'database' in request.GET or (request.GET['database'] != "impala_text" and request.GET['database'] != "impala_parquet" and request.GET['database'] != "hbase" and request.GET['database'] != "hive"):
         result['status'] = 0
-        result['error'] = 'No "database" field received (or an invalid one). It should be "impala_text", "hbase" or "hive"'
+        result['error'] = 'No "database" field received (or an invalid one). It should be "impala_text", "impala_parquet", "hbase" or "hive". But in reality you can only use "impala_text" and "hbase".'
         return HttpResponse(json.dumps(result), mimetype="application/json")
     else:
         database = str(request.GET['database'])
@@ -727,8 +754,11 @@ def benchmarks_variant_import(request, benchmark_table):
         query = hql_query("LOAD DATA INPATH '"+path+"' INTO TABLE "+target_table+";")
         handle = db.execute_and_wait(query)
         result['query_time'] = time.time() - st
-        result['query_text'] = "LOAD DATA INPATH '"+path+"' INTO TABLE "+target_table+";"
 
+    elif database == 'impala_parquet':
+        result['status'] = 0
+        result['error'] = 'The "impala_parquet" database does not support the load data directly, you have to make the insert' \
+                          'manually when the impala_text will be created.'
     else:
         result['status'] = 0
         result['error'] = 'No corresponding database...'
