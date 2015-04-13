@@ -605,13 +605,23 @@ def benchmarks_variant_query(request, benchmark_table):
     # We execute the query. Be careful, the time to launch the hbase shell is around ~7s
     query = str(request.GET['query'])
     #output = check_output(['echo scan \\\'gdegols_benchmarks_test\\\' | hbase shell'], shell=True)
-    if database == "hbase":
+    if database == "hbase" or database == "hive":
+        if database == "hbase":
+            command_line = 'echo '+query.replace('\'','\\\'')+' | hbase shell'
+        else:
+            command_line = 'hive -e \''+query+'\''
 
-        command_line = 'echo '+query.replace('\'','\\\'')+' | hbase shell'
-
-    elif database == "hive":
-
-        command_line = 'hive -e \''+query+'\''
+        # We make the query for hbase or hive
+        if output_returned == True:
+            st = time.time()
+            output = check_output([command_line], shell=True)
+            result['query_time'] = time.time() - st
+            result['output_length'] = len(output)
+            result['output'] = output[:min(len(output),output_max)]
+        else:
+            st = time.time()
+            subprocess.call([command_line], shell=True)
+            result['query_time'] = time.time() - st
 
     else:
         # We could use "impala-shell", but we can do something a little bit prettier
@@ -622,26 +632,20 @@ def benchmarks_variant_query(request, benchmark_table):
             db = dbms.get(request.user, query_server=query_server)
         except Exception:
             result['status'] = 0
-            result['error'] = 'Sorry, an error occured: Impossible to connect to the db.'
+            result['error'] = 'Sorry, an error occurred: Impossible to connect to the db.'
             return HttpResponse(json.dumps(result), mimetype="application/json")
 
         # Executing the query
         st = time.time()
-        query = hql_query(query)
-        handle = db.execute_and_wait(query)
+        hquery = hql_query(query)
+        handle = db.execute_and_wait(hquery)
         result['query_time'] = time.time() - st
+        if handle:
+            data = db.fetch(handle, rows=output_max)
+            result['output'] = list(data.rows())
+            db.close(handle)
 
 
-    if output_returned == True:
-        st = time.time()
-        output = check_output([command_line], shell=True)
-        result['query_time'] = time.time() - st
-        result['output_length'] = len(output)
-        result['output'] = output[:min(len(output),output_max)]
-    else:
-        st = time.time()
-        subprocess.call([command_line], shell=True)
-        result['query_time'] = time.time() - st
 
     # The end
     return HttpResponse(json.dumps(result), mimetype="application/json")
