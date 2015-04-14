@@ -607,9 +607,9 @@ def benchmarks_variant_query(request, benchmark_table):
     if database == "hbase":
         target_table = 'gdegols_benchmarks_'+benchmark_table
     elif database == "hive_text" or database == "impala_text":
-        target_table = 'gdegols_benchmarks_impala_text_'+benchmark_table
+        target_table = 'gdegols_benchmarks_text_'+benchmark_table
     else:
-        target_table = 'gdegols_benchmarks_impala_parquet_'+benchmark_table
+        target_table = 'gdegols_benchmarks_parquet_'+benchmark_table
 
     query = query.replace('benchmarks', target_table)
 
@@ -767,7 +767,7 @@ def benchmarks_variant_import(request, benchmark_table):
             result['error'] = 'Sorry, an error occured: Impossible to connect to the db.'
             return HttpResponse(json.dumps(result), mimetype="application/json")
 
-        target_table = 'gdegols_benchmarks_impala_text_'+benchmark_table
+        target_table = 'gdegols_benchmarks_text_'+benchmark_table
 
         # Executing the query
         st = time.time()
