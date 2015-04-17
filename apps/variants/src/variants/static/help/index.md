@@ -43,11 +43,14 @@ The resource representations are detailed in the subsection [Resource representa
 The methods
 
 **Datasets**
-| Method | HTTP request | Description|
-| -------|--------------|------------|
-| create |POST /datasets| Creates a new dataset|
-| delete |DELETE /datasets | Deletes a dataset |
-| list   |GET /datasets | List datasets within a project |
+
+
+| Method  | HTTP request     | Description                    |
+| ------- | -------------    | -----------                    |
+| create  | POST /datasets   | Creates a new dataset          |
+| delete  | DELETE /datasets | Deletes a dataset              |
+| list    | GET /datasets    | List datasets within a project |
+
 
 **Readgroupsets**
 
