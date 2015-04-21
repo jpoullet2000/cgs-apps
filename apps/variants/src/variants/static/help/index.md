@@ -153,7 +153,7 @@ For Datasets Resource details, see the [resource representation page](#resourceR
 | Method  | HTTP request     | Description                    |
 | ------- | -------------    | -----------                    |
 | create  | POST /datasets   | Creates a new dataset          |
-| delete  | DELETE /datasets | Deletes a dataset              |
+| delete  | DELETE /datasets/*datasetId* | Deletes a dataset              |
 | list    | GET /datasets    | List datasets within a project |
 
 
