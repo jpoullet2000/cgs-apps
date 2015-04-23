@@ -17,8 +17,9 @@ from django.conf.urls.defaults import patterns, url
 
 urlpatterns = patterns('variants',
     url(r'^$', 'views.index'),
-  
-    url(r'^database/initialize/$', 'views.database_initialize'),
+
+    url(r'^docs/', include('rest_framework_swagger.urls')),  
+    #url(r'^database/initialize/$', 'views.database_initialize'),
 
 
     url(r'^sample/insert/interface/$', 'views.sample_insert_interface'),

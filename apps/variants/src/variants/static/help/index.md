@@ -144,7 +144,7 @@ For Samples Resource details, see the [resource representation page](#resourceRe
 | ------- | -------------    | -----------                    |
 | create  | POST /samples/  | Creates a new sample          |
 | delete  | DELETE /samples/sampleId | Deletes a sample              |
-| search  | POST /samples/search sampleId    | Search for samples matching criteria |
+| search  | POST /samples/search | Search for samples matching criteria |
 
 
 **Datasets**
@@ -179,6 +179,7 @@ For Variants Resource details, see the [resource representation page](#resourceR
 | Method  | HTTP request                    | Description              |
 | ------- | -------------                   | -----------              |
 | get     | GET /variants/*variantId*       | Gets a variant by ID     |
+| search  | POST /variants/search           | Search for variants matching criteria |
 
 **Callsets**
 For Callsets Resource details, see the [resource representation page](#resourceRepresentations).
