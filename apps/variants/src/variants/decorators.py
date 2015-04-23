@@ -8,8 +8,8 @@ from django.http import Http404
 from django.utils.functional import wraps
 from django.utils.translation import ugettext as _
 
-from desktop.lib.django_util import JsonResponse
-from desktop.lib.exceptions_renderable import PopupException
+## from desktop.lib.django_util import JsonResponse
+## from desktop.lib.exceptions_renderable import PopupException
 from desktop.lib.i18n import force_unicode
 
 LOG = logging.getLogger(__name__)
@@ -34,7 +34,8 @@ def api_error_handler(func):
       response['message'] = force_unicode(str(e))
     finally:
       if response:
-        return JsonResponse(response)
+        ##return JsonResponse(response)
+        return HttpResponse(json.dumps(response), mimetype="application/json")
 
   return decorator
 
@@ -49,5 +50,6 @@ def json_error_handler(view_fn):
       response = {
         'error': str(e)
       }
-      return JsonResponse(response, status=500)
+      return HttpResponse(json.dumps(response), mimetype="application/json")
+      ##return JsonResponse(response, status=500)
   return decorator

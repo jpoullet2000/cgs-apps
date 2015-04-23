@@ -6,7 +6,7 @@ import logging
 from django.core.urlresolvers import reverse
 from django.utils.translation import ugettext as _
 
-from desktop.lib.django_util import JsonResponse
+#from desktop.lib.django_util import JsonResponse
 from desktop.lib.rest.http_client import RestException
 from exception import handle_rest_exception
 
@@ -119,15 +119,17 @@ def variants_search(request):
     """ Gets a variant by ID (ID = row key in HBase)
     
     """
-    response = {'status': -1}
+    result = {'status': -1}
     ## check request
     if request.method != 'POST':
-        response.update(handle_rest_exception(e, _('The method should be POST.')))
-        return JsonResponse(response)
+        result.update(handle_rest_exception(e, _('The method should be POST.')))
+        return HttpResponse(json.dumps(result), mimetype="application/json")
+        ##return JsonResponse(response)
 
     if 'callSetIds' not in request.POST.keys():
-        response.update(handle_rest_exception(e, _('Information about the callsets (sample information should be available).')))
-        return JsonResponse(response)
+        result.update(handle_rest_exception(e, _('Information about the callsets (sample information should be available).')))
+        return HttpResponse(json.dumps(result), mimetype="application/json")
+        ##return JsonResponse(response)
 
     ## getting data from DB
     query_server = get_query_server_config(name='impala')
