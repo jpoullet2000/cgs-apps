@@ -190,7 +190,7 @@ def variants_search(request):
     
     if handle:
         data = db.fetch(handle, rows=1)
-        result['data'] = list(data.rows())
+        result['variants'] = list(data.rows())
         result['status'] = 1
         db.close(handle)  
 
