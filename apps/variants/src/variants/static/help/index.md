@@ -20,6 +20,50 @@ Launch hue, then go to http://quickstart.cloudera:8888/variants/database/initial
 
 ##**API**
 
+**For Hue 3.7+:**
+You can use this script:
+
+```
+# source this code in a Bash shell ($ . django-csrftoken-login-demo.bash),
+# if the method requires input parameters, add them in INPUT PARAMETER FOR API METHOD
+ 
+django-csrftoken-login-demo() {
+# -- CHANGE THESE VALUES TO MATCH YOUR ACCOUNT --
+local HOSTING_PANEL_USER='cloudera'
+local HOSTING_PANEL_PASS='cloudera'
+local HOSTING_PANEL_LOGIN=http://localhost:8888/accounts/login/
+local API_METHOD=variant_get
+local API_METHOD_URL=http://localhost:8888/variants/variant/get/1/
+local COOKIES=cookies.txt
+local CURL_BIN="curl -s -c $COOKIES -b $COOKIES -e $HOSTING_PANEL_LOGIN"
+local DATAFILE=curl-data.txt
+
+# INPUT PARAMETERS FOR API METHOD 
+#local SAMPLE_ID=HG00096 
+
+umask 0007
+echo -n "Django Auth: get csrftoken ..."
+$CURL_BIN $HOSTING_PANEL_LOGIN > /dev/null
+local DJANGO_TOKEN="csrfmiddlewaretoken=$(grep csrftoken $COOKIES | sed 's/^.*csrftoken\s*//')"
+echo -n " Perform login ..."
+echo "$DJANGO_TOKEN;username=$HOSTING_PANEL_USER;password=$HOSTING_PANEL_PASS" > $DATAFILE
+$CURL_BIN -X POST -d @$DATAFILE $HOSTING_PANEL_LOGIN
+echo -n " Running method '$API_METHOD' ..."
+#echo "$DJANGO_TOKEN;sample_id=$SAMPLE_ID;" > $DATAFILE
+echo "$DJANGO_TOKEN" > $DATAFILE
+#$CURL_BIN -X POST -d @$DATAFILE "$HOSTING_PANEL_DATABASE"
+echo -n "$CURL_BIN -X POST -d @$DATAFILE $API_METHOD_URL"
+$CURL_BIN -X POST -d @$DATAFILE "$API_METHOD_URL"
+echo " logout"
+rm $COOKIES $DATAFILE
+} 
+
+## run the function
+django-csrftoken-login-demo
+```
+
+**For Hue 3.6 and before:**
+
 ###*Authentification:*
 ```
 curl --data "username=cloudera&password=cloudera" -c "cookies.txt" -b "cookies.txt"
@@ -33,6 +77,13 @@ curl --data "username=cloudera&password=cloudera" -c "cookies.txt" -b "cookies.t
     curl --data "sample_id=<CUSTOMER_SAMPLE_ID>" -c "cookies.txt" -b "cookies.txt" -X POST 
     http://quickstart.cloudera:8888/genomicAPI/api/files/search
 	```
+
+
+
+
+
+
+
 
 ###*Resources*
 Definition of the resources is largely inspired from Google Genomics (https://cloud.google.com/genomics/v1beta2/reference) but may slightly differ.
