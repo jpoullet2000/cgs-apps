@@ -18,9 +18,10 @@ from django.conf.urls.defaults import patterns, url
 urlpatterns = patterns('variants',
     url(r'^$', 'views.index'),
 
-    url(r'^docs/', include('rest_framework_swagger.urls')),  
+    #url(r'^docs/', include('rest_framework_swagger.urls')),  
     #url(r'^database/initialize/$', 'views.database_initialize'),
 
+    url(r'^variants/search$', 'api.variants_search'),
 
     url(r'^sample/insert/interface/$', 'views.sample_insert_interface'),
     url(r'^sample/insert/$', 'views.sample_insert'),

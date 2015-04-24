@@ -5,6 +5,12 @@ import logging
 
 from django.core.urlresolvers import reverse
 from django.utils.translation import ugettext as _
+from django.http import HttpResponse
+
+from beeswax.design import hql_query
+from beeswax.server import dbms
+from beeswax.server.dbms import get_query_server_config
+from impala.models import Dashboard, Controller
 
 #from desktop.lib.django_util import JsonResponse
 from desktop.lib.rest.http_client import RestException
@@ -12,9 +18,20 @@ from exception import handle_rest_exception
 
 from variants.decorators import api_error_handler
 
-
 LOG = logging.getLogger(__name__)
 
+### debugging
+# def current_line():
+#     """ Return the current line number """
+#     return inspect.currentframe().f_back.f_lineno
+  
+def fprint(txt):
+    """ Print some text in a debug file """
+    f = open('/home/cloudera/debug.txt', 'a')
+    f.write(str(txt)+"\n")
+    f.close()
+    return True
+###
 
 ## samples
 @api_error_handler
@@ -118,31 +135,58 @@ def variants_get(request):
 def variants_search(request):
     """ Gets a variant by ID (ID = row key in HBase)
     
+    To test it type in your bash prompt: 
+    See the documentation    
+
     """
     result = {'status': -1}
-    ## check request
+    # ## check request
     if request.method != 'POST':
-        result.update(handle_rest_exception(e, _('The method should be POST.')))
+        result['status'] = -1
+        result['error'] = "The method should be POST."
         return HttpResponse(json.dumps(result), mimetype="application/json")
-        ##return JsonResponse(response)
+        ##return JsonResponse(result)
 
-    if 'callSetIds' not in request.POST.keys():
-        result.update(handle_rest_exception(e, _('Information about the callsets (sample information should be available).')))
+    criteria_json = request.POST['criteria']
+    #fprint("============")
+    ##fprint(criteria_json)
+    #callsetid = json.loads(criteria)['callSetIds']
+    criteria = json.loads(criteria_json)
+    criteria_keys = [str(s) for s in criteria.keys()]
+    #fprint(criteria['callSetIds'])
+    if 'callSetIds' not in criteria_keys:
+    #if 'callSetIds' not in request.POST.keys():
+        result['status'] = -1
+        result['keys'] = request.POST.keys()
+        #result['criteria'] = callsetid
+        result['error'] = "Information about the callsets (sample information should be available)."
         return HttpResponse(json.dumps(result), mimetype="application/json")
-        ##return JsonResponse(response)
+        ##return JsonResponse(result)
 
+    callsetids = [str(s) for s in criteria['callSetIds']]
+    ##fprint(','.join(callsetids))
     ## getting data from DB
-    query_server = get_query_server_config(name='impala')
     try:
+        query_server = get_query_server_config(name='impala')
         db = dbms.get(request.user, query_server=query_server)
-        variant_table = "jpoullet_1000genomes_1E7rows_bis"
-        hql = "SELECT * FROM " + variant_table + " WHERE readGroupSets_readGroups_info_patientId IN (" + request.POST['callSetIds']  
-        query = hql_query(hql)
-        handle = db.execute_and_wait(query, timeout_sec=5.0)
     except Exception:
         result['status'] = 0
         result['error'] = "Sorry, an error occured: Impossible to connect to the db."
         return HttpResponse(json.dumps(result), mimetype="application/json")
+
+    try:
+        ## TODO: the variant_table should be defined from the config files 
+        variant_table = "jpoullet_1000genomes_1E7rows_bis"
+        hql = "SELECT * FROM " + variant_table + " WHERE readGroupSets_readGroups_info_patientId IN ('" + ','.join(callsetids) + "')"
+        fprint(hql)
+        query = hql_query(hql)
+        handle = db.execute_and_wait(query, timeout_sec=5.0)
+
+    except:
+        result['status'] = 0
+        result['error'] = "The query cannot be performed :%s" % hql
+        return HttpResponse(json.dumps(result), mimetype="application/json")
+
     
     if handle:
         data = db.fetch(handle, rows=1)

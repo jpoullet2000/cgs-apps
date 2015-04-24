@@ -7,12 +7,28 @@ import logging
 from django.http import Http404
 from django.utils.functional import wraps
 from django.utils.translation import ugettext as _
-
+from django.http import HttpResponse
 ## from desktop.lib.django_util import JsonResponse
 ## from desktop.lib.exceptions_renderable import PopupException
 from desktop.lib.i18n import force_unicode
+from beeswax.server.dbms import get_query_server_config, QueryServerException
+from exception import handle_rest_exception
 
 LOG = logging.getLogger(__name__)
+
+class SessionExpired(Exception):
+  pass
+
+class QueryExpired(Exception):
+  pass
+
+
+class QueryError(Exception):
+  def __init__(self, message):
+    self.message = message
+    
+  def __str__(self):
+    return force_unicode(str(self.message))
 
 
 
