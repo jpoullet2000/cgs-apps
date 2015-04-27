@@ -94,10 +94,10 @@ def variantsets_importVariants(request):
 
     Parameters: 
      - variantSetId: string Required. The variant set to which variant data should be imported.  
-    sourceUris: a list of URIs pointing to VCF files in the cluster
-    format: "VCF" 
+     - sourceUris: a list of URIs pointing to VCF files in the cluster
+     - format: "VCF" 
 
-    ## VCF headers are 
+    ## 
     """
     pass 
     
@@ -109,7 +109,6 @@ def variants_get(request):
     result = {'status': -1}
     ## config.yml and reference.yml in CGSCONFIG (see the config file in the root directory of this package) 
     ## reading the config.yml file to define the datastructure (looking for HBase with "variant" in names)
-    
     
     ## reading the reference.yml file to define the link between the API resource and HBase/impala fields
     ## impalaFields = 
@@ -133,7 +132,7 @@ def variants_get(request):
 
 @api_error_handler
 def variants_search(request):
-    """ Gets a variant by ID (ID = row key in HBase)
+    """ Search a variant by some criteria (see doc for more details and if not https://cloud.google.com/genomics/v1beta2/reference/variants/search)
     
     To test it type in your bash prompt: 
     See the documentation    
@@ -148,23 +147,30 @@ def variants_search(request):
         ##return JsonResponse(result)
 
     criteria_json = request.POST['criteria']
-    #fprint("============")
-    ##fprint(criteria_json)
+    fprint("============")
+    fprint(criteria_json)
     #callsetid = json.loads(criteria)['callSetIds']
-    criteria = json.loads(criteria_json)
+    try: 
+        criteria = json.loads(criteria_json)
+    except Exception:
+        result['status'] = -1
+        result['error'] = "Sorry, an error occured: Impossible to load the criteria. Please check that they are in a JSON format."
+        return HttpResponse(json.dumps(result), mimetype="application/json")
+
     criteria_keys = [str(s) for s in criteria.keys()]
-    #fprint(criteria['callSetIds'])
+    fprint(criteria['callSetIds'])
     if 'callSetIds' not in criteria_keys:
     #if 'callSetIds' not in request.POST.keys():
         result['status'] = -1
-        result['keys'] = request.POST.keys()
+        #result['keys'] = request.POST.keys()
         #result['criteria'] = callsetid
-        result['error'] = "Information about the callsets (sample information should be available)."
+        result['error'] = "Information about the callSetsIds (sample information should be available)."
         return HttpResponse(json.dumps(result), mimetype="application/json")
         ##return JsonResponse(result)
 
     callsetids = [str(s) for s in criteria['callSetIds']]
-    ##fprint(','.join(callsetids))
+    
+    fprint(','.join(callsetids))
     ## getting data from DB
     try:
         query_server = get_query_server_config(name='impala')
@@ -175,25 +181,58 @@ def variants_search(request):
         return HttpResponse(json.dumps(result), mimetype="application/json")
 
     try:
-        ## TODO: the variant_table should be defined from the config files 
-        variant_table = "jpoullet_1000genomes_1E7rows_bis"
-        hql = "SELECT * FROM " + variant_table + " WHERE readGroupSets_readGroups_info_patientId IN ('" + ','.join(callsetids) + "')"
+        ## TODO: 
+        ## - the variant_table should be defined from the config files not as a string as here  
+        ## - the callsetids should map to a specific field (here readGroupSets_readGroups_info_patientId) in the variant table, this info should be read from the config files, not as a string as here.
+        ## the listVars should be read from the config files as well
+        variants_table = "jpoullet_1000genomes_1E7rows_bis"
+        listVars = ["id","readGroupSets_readGroups_info_patientId"]
+        fprint(variants_table)
+        #fprint(str(criteria.keys()[0]))
+        searchCriteriaList = list()
+        for k in criteria.keys():
+            fprint(criteria[str(k)])
+            if str(k) == 'callSetIds': 
+                refvar = "readGroupSets_readGroups_info_patientId" ## TODO: this must be read from the config files 
+            elif str(k) == 'referenceName':
+                refvar = 'variants_referenceName' ## TODO: this must be read from the config files
+            else:
+                pass # TODO: there should be an error when the user chooses some inexisting variable 
+            fprint(refvar + " in ('" + "','".join([str(s) for s in criteria[str(k)]]) + "')")
+            searchCriteriaList.append(refvar + " in ('" + "','".join([str(s) for s in criteria[str(k)]]) + "')")
+
+        searchCriteriaTxt = " AND ".join(searchCriteriaList)
+        fprint(searchCriteriaTxt)
+        
+        hql = "SELECT " + ",".join(listVars) + " FROM " + variants_table + " WHERE " + searchCriteriaTxt
+        #hql = "SELECT " + ",".join(listVars) + " FROM " + variant_table + " WHERE readGroupSets_readGroups_info_patientId IN ('" + "','".join(callsetids) + "')"
         fprint(hql)
+
+    except Exception: 
+        result['status'] = 0
+        result['error'] = "Sorry, an error occured: a syntax error appears in the definition of the criteria. The query could not be built."
+        return HttpResponse(json.dumps(result), mimetype="application/json")        
+
+    try:
         query = hql_query(hql)
         handle = db.execute_and_wait(query, timeout_sec=5.0)
 
-    except:
+    except Exception:
         result['status'] = 0
-        result['error'] = "The query cannot be performed :%s" % hql
+        result['error'] = "The query cannot be performed: %s" % hql
         return HttpResponse(json.dumps(result), mimetype="application/json")
-
     
     if handle:
-        data = db.fetch(handle, rows=1)
+        data = db.fetch(handle)
+        ## TODO: rebuild the variant resource such as defined in the API
+        ## field parser that would take the config files as input to retrieve the generate back the structured json
+        ## results['variants'] = getStructuredJson(list(data.rows))
         result['variants'] = list(data.rows())
         result['status'] = 1
         db.close(handle)  
 
+    else: 
+        result['error'] = 'No result found.'
     return HttpResponse(json.dumps(result), mimetype="application/json")
     
 
@@ -202,4 +241,5 @@ def variants_search(request):
 def callsets_get(request):
     """ Gets a call set by ID 
     """
+    
     pass 

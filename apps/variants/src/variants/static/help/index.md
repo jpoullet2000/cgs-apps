@@ -24,22 +24,22 @@ Launch hue, then go to http://quickstart.cloudera:8888/variants/database/initial
 You can use this script:
 
 ```
-# source this code in a Bash shell ($ . django-csrftoken-login-demo.bash),
+# source this code in a Bash shell ($ . django-csrftoken-login-BridgeIris-variants_search_JSON_V2.sh),
 # if the method requires input parameters, add them in INPUT PARAMETER FOR API METHOD
- 
+
 django-csrftoken-login-demo() {
 # -- CHANGE THESE VALUES TO MATCH YOUR ACCOUNT --
 local HOSTING_PANEL_USER='cloudera'
 local HOSTING_PANEL_PASS='cloudera'
 local HOSTING_PANEL_LOGIN=http://localhost:8888/accounts/login/
-local API_METHOD=variant_get
-local API_METHOD_URL=http://localhost:8888/variants/variant/get/1/
+local API_METHOD=variant_search
+local API_METHOD_URL=http://localhost:8888/variants/variants/search
 local COOKIES=cookies.txt
 local CURL_BIN="curl -s -c $COOKIES -b $COOKIES -e $HOSTING_PANEL_LOGIN"
 local DATAFILE=curl-data.txt
 
 # INPUT PARAMETERS FOR API METHOD 
-#local SAMPLE_ID=HG00096 
+local VARIANT_CRITERIA='{"callSetIds":["HG00096"],"referenceName":["17"]}'
 
 umask 0007
 echo -n "Django Auth: get csrftoken ..."
@@ -47,13 +47,14 @@ $CURL_BIN $HOSTING_PANEL_LOGIN > /dev/null
 local DJANGO_TOKEN="csrfmiddlewaretoken=$(grep csrftoken $COOKIES | sed 's/^.*csrftoken\s*//')"
 echo -n " Perform login ..."
 echo "$DJANGO_TOKEN;username=$HOSTING_PANEL_USER;password=$HOSTING_PANEL_PASS" > $DATAFILE
+#echo "$CURL_BIN -X POST -d @$DATAFILE $HOSTING_PANEL_LOGIN"
 $CURL_BIN -X POST -d @$DATAFILE $HOSTING_PANEL_LOGIN
 echo -n " Running method '$API_METHOD' ..."
-#echo "$DJANGO_TOKEN;sample_id=$SAMPLE_ID;" > $DATAFILE
-echo "$DJANGO_TOKEN" > $DATAFILE
+#echo "$DJANGO_TOKEN;criteria=`json_escape $VARIANT_CRITERIA`;" > $DATAFILE
+echo "$DJANGO_TOKEN;criteria=$VARIANT_CRITERIA;" > $DATAFILE
 #$CURL_BIN -X POST -d @$DATAFILE "$HOSTING_PANEL_DATABASE"
-echo -n "$CURL_BIN -X POST -d @$DATAFILE $API_METHOD_URL"
-$CURL_BIN -X POST -d @$DATAFILE "$API_METHOD_URL"
+#echo -n "$CURL_BIN -X POST -H 'Content-Type: application/json' -d @$DATAFILE $API_METHOD_URL"
+$CURL_BIN -X POST -H "Content-Type: application/json" -d @$DATAFILE "$API_METHOD_URL"
 echo " logout"
 rm $COOKIES $DATAFILE
 } 
