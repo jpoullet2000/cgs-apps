@@ -5,7 +5,7 @@ import os, shutil, sys, distutils.core, subprocess
 
 # Some configuration needed for this file
 apps_directory = ""
-apps = {"variants": "apps/variants"}
+apps = {"variants": "apps/variants", "patients": "apps/patients"}
 PRODUCTION = False
 
 # TODO: better management of errors

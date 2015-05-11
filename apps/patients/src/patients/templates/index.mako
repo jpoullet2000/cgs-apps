@@ -1,7 +1,7 @@
 <%!from desktop.views import commonheader, commonfooter %>
 <%namespace name="shared" file="shared_components.mako" />
 
-${commonheader("variants", "variants", user) | n,unicode}
+${commonheader("patients", "patients", user) | n,unicode}
 ${shared.menubar(section='index')}
 
 ## Use double hashes for a mako template comment
@@ -9,7 +9,7 @@ ${shared.menubar(section='index')}
 
 <div class="container-fluid">
   <div class="card">
-    <h2 class="card-heading simple">Welcome to CGS - variants!</h2>
+    <h2 class="card-heading simple">Welcome to CGS - patients!</h2>
     <div class="card-body">
       <p>Hello!</p>
     </div>
